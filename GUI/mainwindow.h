@@ -14,11 +14,11 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    bool loadFile(const QString &);
-
+    void loadFile(const QString &);
 
 private slots:
     void on_loadPictureButton_clicked();
+    void mousePressEvent(QMouseEvent *event);
 
 private:
     Ui::MainWindow *ui;

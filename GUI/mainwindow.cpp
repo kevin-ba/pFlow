@@ -4,6 +4,7 @@
 #include <QImageReader>
 #include <QMessageBox>
 #include <QGraphicsPixmapItem>
+#include <QMouseEvent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -24,7 +25,7 @@ void MainWindow::on_loadPictureButton_clicked()
     loadFile(picturesLocations);
 }
 
-bool MainWindow::loadFile(const QString &fileName)
+void MainWindow::loadFile(const QString &fileName)
 {
     QImageReader reader(fileName);
     const QImage newImage = reader.read();
@@ -32,7 +33,6 @@ bool MainWindow::loadFile(const QString &fileName)
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Cannot load %1: %2")
                                  .arg(QDir::toNativeSeparators(fileName), reader.errorString()));
-        return false;
     }
 
     QGraphicsScene* scene = new QGraphicsScene();
@@ -42,6 +42,15 @@ bool MainWindow::loadFile(const QString &fileName)
     ui->graphicsView->setScene(scene);
     ui->graphicsView->fitInView(item, Qt::KeepAspectRatio);
     ui->graphicsView->show();
+}
 
-    return true;
+void MainWindow::mousePressEvent(QMouseEvent *event)
+{
+    if(event->button() == Qt::LeftButton)
+        {
+            QPointF mousePoint = ui->graphicsView->mapToScene(event->pos());
+            qDebug() << mousePoint;
+            // punkt abspeichern um polygonzug zu erstellen
+            // punkt bzw. polygonzug zeichnen
+        }
 }

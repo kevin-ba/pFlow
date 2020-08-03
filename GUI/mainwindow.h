@@ -15,6 +15,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void loadFile(const QString &);
+    void drawPolygon();
 
 private slots:
     void on_loadPictureButton_clicked();

@@ -37,7 +37,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_2">
+   <widget class="QRadioButton" name="radioButton_Points">
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -49,8 +49,14 @@
     <property name="text">
      <string>Points</string>
     </property>
+    <property name="autoExclusive">
+     <bool>true</bool>
+    </property>
+    <attribute name="buttonGroup">
+     <string notr="true">buttonGroup</string>
+    </attribute>
    </widget>
-   <widget class="QPushButton" name="pushButton_3">
+   <widget class="QRadioButton" name="radioButton_Door">
     <property name="geometry">
      <rect>
       <x>340</x>
@@ -60,8 +66,11 @@
      </rect>
     </property>
     <property name="text">
-     <string>Doors</string>
+     <string>Door</string>
     </property>
+    <attribute name="buttonGroup">
+     <string notr="true">buttonGroup</string>
+    </attribute>
    </widget>
    <widget class="QPushButton" name="pushButton_4">
     <property name="geometry">
@@ -96,7 +105,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>23</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -104,4 +113,7 @@
  </widget>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup"/>
+ </buttongroups>
 </ui>

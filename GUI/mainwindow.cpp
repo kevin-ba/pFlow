@@ -44,13 +44,47 @@ void MainWindow::loadFile(const QString &fileName)
     ui->graphicsView->show();
 }
 
+QPolygonF polygonPoints;
+QPolygonF polygonDoor;
+QList<QPolygonF> polygonDoorsList;
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
     if(event->button() == Qt::LeftButton)
         {
             QPointF mousePoint = ui->graphicsView->mapToScene(event->pos());
-            qDebug() << mousePoint;
-            // punkt abspeichern um polygonzug zu erstellen
-            // punkt bzw. polygonzug zeichnen
+            if(ui->radioButton_Points->isChecked())
+            {
+                polygonPoints << mousePoint;
+                qDebug() << polygonPoints;
+            }
+            if(ui->radioButton_Door->isChecked())
+            {
+                polygonDoor << mousePoint;
+                if(polygonDoor.length() == 2)
+                {
+                    polygonDoorsList.append(polygonDoor);
+                    polygonDoor.clear();
+                    qDebug() << polygonDoorsList;
+                }
+            }
+
+           // drawPolygon();
         }
+}
+
+void MainWindow::drawPolygon()
+{
+    // pixmap von graphicsview scene holen und damit painter initalisieren
+    QPainter *painter = new QPainter(this); // new QPainter(&pixmap);
+    QPen pen(Qt::blue, 3, Qt::DashDotLine, Qt::RoundCap, Qt::RoundJoin);
+    painter->setPen(pen);
+    painter->drawPolygon(polygonPoints);
+    /*alle Türen einzeichnen
+    pen = QPen(Qt::red, 3, Qt::DashDotLine, Qt::RoundCap, Qt::RoundJoin);
+    painter->setPen(pen);
+    foreach(QPolygonF door, polygonDoorsList)
+    {
+        painter->drawPolygon(door);
+    }*/
+    // pixmap item von graphicsview scene updaten
 }

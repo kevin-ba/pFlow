@@ -20,6 +20,7 @@ public:
 private slots:
     void on_loadPictureButton_clicked();
     void mousePressEvent(QMouseEvent *event);
+    void on_saveFileButton_clicked();
 
 private:
     Ui::MainWindow *ui;

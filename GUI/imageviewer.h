@@ -13,6 +13,7 @@ class ImageViewer : public QMainWindow
 public:
     ImageViewer(QWidget *parent = nullptr);
     bool loadFile(const QString &);
+    void saveFile();
 
 private slots:
     void open();
@@ -31,6 +32,7 @@ private:
     void setImage(const QImage &newImage);
     void scaleImage(double factor);
     void adjustScrollBar(QScrollBar *scrollBar, double factor);
+    void drawPolygon();
 
     QImage image;
     QLabel *imageLabel;
@@ -41,6 +43,10 @@ private:
     QAction *zoomOutAct;
     QAction *normalSizeAct;
     QAction *fitToWindowAct;
+
+    QPolygonF polygonPoints;
+    QPolygonF polygonDoor;
+    QList<QPolygonF> polygonDoorsList;
 };
 
 #endif // IMAGEVIEWER_H

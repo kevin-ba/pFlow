@@ -9,6 +9,7 @@
 #include <QMenuBar>
 #include <QApplication>
 #include <QScreen>
+#include <QMouseEvent>
 
 ImageViewer::ImageViewer(QWidget *parent)
    : QMainWindow(parent), imageLabel(new QLabel)
@@ -86,6 +87,32 @@ bool ImageViewer::loadFile(const QString &fileName)
     return true;
 }
 
+void ImageViewer::saveFile()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,
+            tr("Save File"), "",
+            tr("ASCII-File (*.txt)"));
+    if (fileName.isEmpty())
+            return;
+    else
+    {
+        QFile file(fileName);
+        if (!file.open(QIODevice::WriteOnly))
+        {
+            QMessageBox::information(this, tr("Unable to open file"),
+                file.errorString());
+            return;
+        }
+
+        QDataStream out(&file);
+                out.setVersion(QDataStream::Qt_4_5);
+                foreach(QPointF point, polygonPoints)
+                {
+                    out << point; // noch falsches Format
+                }
+     }
+}
+
 void ImageViewer::zoomIn()
 {
     scaleImage(1.25);
@@ -134,6 +161,9 @@ void ImageViewer::createActions()
 
     QAction *openAct = fileMenu->addAction(tr("&Open..."), this, &ImageViewer::open);
     openAct->setShortcut(QKeySequence::Open);
+
+    QAction *saveAct = fileMenu->addAction(tr("&Save..."), this, &ImageViewer::saveFile);
+    saveAct->setEnabled(true);
 
     fileMenu->addSeparator();
 
@@ -192,15 +222,42 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
                             + ((factor - 1) * scrollBar->pageStep()/2)));
 }
 
-
-#include <QMouseEvent>
 void ImageViewer::mousePressEvent(QMouseEvent *event)
 {
+    QPointF mousePoint = imageLabel->mapFromParent(event->pos());
     if(event->button() == Qt::LeftButton)
+    {
+        polygonPoints << mousePoint;
+        qDebug() << polygonPoints;
+    }
+    if(event->button() == Qt::RightButton)
+    {
+
+        polygonDoor << mousePoint;
+        if(polygonDoor.length() == 2)
         {
-            QPointF mousePoint = imageLabel->mapFromParent(event->pos());
-            qDebug() << mousePoint;
-            // punkt abspeichern um polygonzug zu erstellen
-            // punkt bzw. polygonzug zeichnen
+            polygonDoorsList.append(polygonDoor);
+            polygonDoor.clear();
+            qDebug() << polygonDoorsList;
         }
+    }
+
+    // drawPolygon();
+}
+
+void ImageViewer::drawPolygon()
+{
+    // pixmap von graphicsview scene holen und damit painter initalisieren
+    /*QPainter *painter = new QPainter(imageLabel->pixmap()); // new QPainter(&pixmap);
+    QPen pen(Qt::blue, 3, Qt::DashDotLine, Qt::RoundCap, Qt::RoundJoin);
+    painter->setPen(pen);
+    painter->drawPolygon(polygonPoints);
+    alle Türen einzeichnen
+    pen = QPen(Qt::red, 3, Qt::DashDotLine, Qt::RoundCap, Qt::RoundJoin);
+    painter->setPen(pen);
+    foreach(QPolygonF door, polygonDoorsList)
+    {
+        painter->drawPolygon(door);
+    }*/
+    // pixmap item von graphicsview scene updaten
 }

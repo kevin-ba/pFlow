@@ -24,7 +24,6 @@ private slots:
     void about();
     void mousePressEvent(QMouseEvent *event);
 
-
 private:
     void createActions();
     void createMenus();

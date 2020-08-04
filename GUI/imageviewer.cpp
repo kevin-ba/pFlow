@@ -10,6 +10,7 @@
 #include <QApplication>
 #include <QScreen>
 #include <QMouseEvent>
+#include <qpainter.h>
 
 ImageViewer::ImageViewer(QWidget *parent)
    : QMainWindow(parent), imageLabel(new QLabel)
@@ -106,9 +107,20 @@ void ImageViewer::saveFile()
 
         QDataStream out(&file);
                 out.setVersion(QDataStream::Qt_4_5);
+                int x = 0;
                 foreach(QPointF point, polygonPoints)
                 {
-                    out << point; // noch falsches Format
+                    out << QStringLiteral("P%1 %2 %3\n").arg(x).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                    x++;
+                }
+                int i = 0;
+                foreach(QPolygonF door, polygonDoorsList)
+                {
+                    foreach(QPointF point, door)
+                    {
+                        out << QStringLiteral("D%1 %2 %3\n").arg(i).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                    }
+                    i++;
                 }
      }
 }
@@ -242,22 +254,22 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
         }
     }
 
-    // drawPolygon();
+     drawPolygon();
 }
 
 void ImageViewer::drawPolygon()
 {
-    // pixmap von graphicsview scene holen und damit painter initalisieren
-    /*QPainter *painter = new QPainter(imageLabel->pixmap()); // new QPainter(&pixmap);
-    QPen pen(Qt::blue, 3, Qt::DashDotLine, Qt::RoundCap, Qt::RoundJoin);
+    QImage tmp(imageLabel->pixmap()->toImage());
+    QPainter *painter = new QPainter(&tmp); // new QPainter(&pixmap);
+    QPen pen(Qt::blue, 3);
     painter->setPen(pen);
     painter->drawPolygon(polygonPoints);
-    alle Türen einzeichnen
-    pen = QPen(Qt::red, 3, Qt::DashDotLine, Qt::RoundCap, Qt::RoundJoin);
+    //alle Türen einzeichnen
+    pen = QPen(Qt::red, 5);
     painter->setPen(pen);
     foreach(QPolygonF door, polygonDoorsList)
     {
         painter->drawPolygon(door);
-    }*/
-    // pixmap item von graphicsview scene updaten
+    }
+    imageLabel->setPixmap(QPixmap::fromImage(tmp));
 }

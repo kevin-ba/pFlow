@@ -81,11 +81,11 @@ bool ImageViewer::loadFile(const QString &fileName)
     fitToWindowAct->setEnabled(true);
     updateActions();
 
-    if (!fitToWindowAct->isChecked())
-        imageLabel->adjustSize();
-
     imageLabel->setPixmap(QPixmap::fromImage(newImage));
     imageLabel->show();
+
+    if (!fitToWindowAct->isChecked())
+        imageLabel->adjustSize();
 
     return true;
 }

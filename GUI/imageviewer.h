@@ -32,6 +32,7 @@ private:
     void scaleImage(double factor);
     void adjustScrollBar(QScrollBar *scrollBar, double factor);
     void drawPolygon();
+    void reset();
 
     QImage image;
     QLabel *imageLabel;

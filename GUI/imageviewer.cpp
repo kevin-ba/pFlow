@@ -73,6 +73,8 @@ bool ImageViewer::loadFile(const QString &fileName)
                                  .arg(QDir::toNativeSeparators(fileName), reader.errorString()));
         return false;
     }
+    image = newImage;
+
     scaleFactor = 1.0;
 
     scrollArea->setVisible(true);
@@ -106,11 +108,10 @@ void ImageViewer::saveFile()
         }
 
         QDataStream out(&file);
-                out.setVersion(QDataStream::Qt_4_5);
                 int x = 0;
                 foreach(QPointF point, polygonPoints)
                 {
-                    out << QStringLiteral("P%1 %2 %3\n").arg(x).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                    out << QStringLiteral("P%1\t%2\t%3\n").arg(x).arg(QString::number(point.x())).arg(QString::number(point.y()));
                     x++;
                 }
                 int i = 0;
@@ -118,7 +119,7 @@ void ImageViewer::saveFile()
                 {
                     foreach(QPointF point, door)
                     {
-                        out << QStringLiteral("D%1 %2 %3\n").arg(i).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                        out << QStringLiteral("D%1\t%2\t%3\n").arg(i).arg(QString::number(point.x())).arg(QString::number(point.y()));
                     }
                     i++;
                 }
@@ -175,7 +176,10 @@ void ImageViewer::createActions()
     openAct->setShortcut(QKeySequence::Open);
 
     QAction *saveAct = fileMenu->addAction(tr("&Save..."), this, &ImageViewer::saveFile);
-    saveAct->setEnabled(true);
+    saveAct->setShortcut(tr("Ctrl+S"));
+
+    QAction *resetAct = fileMenu->addAction(tr("&Reset"), this, &ImageViewer::reset);
+    resetAct->setShortcut(tr("Ctrl+R"));
 
     fileMenu->addSeparator();
 
@@ -244,7 +248,6 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
     }
     if(event->button() == Qt::RightButton)
     {
-
         polygonDoor << mousePoint;
         if(polygonDoor.length() == 2)
         {
@@ -253,13 +256,12 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
             qDebug() << polygonDoorsList;
         }
     }
-
-     drawPolygon();
+    drawPolygon();
 }
 
 void ImageViewer::drawPolygon()
 {
-    QImage tmp(imageLabel->pixmap()->toImage());
+    QImage tmp(image);
     QPainter *painter = new QPainter(&tmp); // new QPainter(&pixmap);
     QPen pen(Qt::blue, 3);
     painter->setPen(pen);
@@ -272,4 +274,11 @@ void ImageViewer::drawPolygon()
         painter->drawPolygon(door);
     }
     imageLabel->setPixmap(QPixmap::fromImage(tmp));
+}
+
+void ImageViewer::reset()
+{
+    polygonPoints.clear();
+    polygonDoorsList.clear();
+    imageLabel->setPixmap(QPixmap::fromImage(image));
 }

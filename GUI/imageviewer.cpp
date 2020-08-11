@@ -186,6 +186,11 @@ void ImageViewer::createActions()
     QAction *exitAct = fileMenu->addAction(tr("E&xit"), this, &QWidget::close);
     exitAct->setShortcut(tr("Ctrl+Q"));
 
+    QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
+    removeAct = editMenu->addAction(tr("&Remove"), this, &ImageViewer::remove);
+    removeAct->setShortcut(QKeySequence::Delete);
+    removeAct->setEnabled(false);
+
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
 
     zoomInAct = viewMenu->addAction(tr("Zoom &In (25%)"), this, &ImageViewer::zoomIn);
@@ -241,21 +246,62 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
 void ImageViewer::mousePressEvent(QMouseEvent *event)
 {
     QPointF mousePoint = imageLabel->mapFromParent(event->pos());
+
     if(event->button() == Qt::LeftButton)
     {
-        polygonPoints << mousePoint;
-        qDebug() << polygonPoints;
+        QList<QPolygonF> polyList;
+        if(polygonPoints.length() >= 1)
+            polyList.append(polygonPoints);
+        if(changePoint == false)
+        {
+            if((mousePoint - getClosestPoint(mousePoint, polyList)).manhattanLength() > 20)
+            {
+                polygonPoints << mousePoint;
+                qDebug() << polygonPoints;
+            } else
+            {
+                changePoint = true;
+                removeAct->setEnabled(true);
+                leftClick = true;
+                closestPoint = getClosestPoint(mousePoint, polyList);
+            }
+        }
+        else if(changePoint)
+        {
+            changePoint = false;
+            polygonPoints.replace(iPoint, mousePoint);
+        }
     }
     if(event->button() == Qt::RightButton)
     {
-        polygonDoor << mousePoint;
-        if(polygonDoor.length() == 2)
+        if(changePoint == false)
         {
-            polygonDoorsList.append(polygonDoor);
-            polygonDoor.clear();
-            qDebug() << polygonDoorsList;
+            if((mousePoint - getClosestPoint(mousePoint, polygonDoorsList)).manhattanLength() > 20)
+            {
+                polygonDoor << mousePoint;
+                if(polygonDoor.length() == 2)
+                {
+                    polygonDoorsList.append(polygonDoor);
+                    polygonDoor.clear();
+                    qDebug() << polygonDoorsList;
+                }
+            } else
+            {
+                changePoint = true;
+                removeAct->setEnabled(true);
+                rightClick = true;
+                closestPoint = getClosestPoint(mousePoint, polygonDoorsList);
+            }
+        }
+        else if(changePoint == true)
+        {
+            changePoint = false;
+            QPolygonF z = polygonDoorsList.takeAt(iList);
+            z.replace(iPoint, mousePoint);
+            polygonDoorsList.insert(iList, z);
         }
     }
+
     drawPolygon();
 }
 
@@ -281,4 +327,58 @@ void ImageViewer::reset()
     polygonPoints.clear();
     polygonDoorsList.clear();
     imageLabel->setPixmap(QPixmap::fromImage(image));
+}
+
+QPointF ImageViewer::getClosestPoint(QPointF newPosition, QList<QPolygonF> polyList)
+{
+    QPointF closestPoint;
+    float manhattenLength;
+    if (polyList.length() >= 1)
+    {
+        closestPoint = polyList.first().first();
+        manhattenLength = (closestPoint - newPosition).manhattanLength();
+    }
+
+    iPoint = 0;
+    iList = 0;
+    int iL = 0;
+    foreach(QPolygonF poly, polyList)
+    {
+        int iP = 0;
+        foreach(QPointF point, poly)
+        {
+            float mhL = (point - newPosition).manhattanLength();
+            if(mhL < manhattenLength)
+            {
+                closestPoint = point;
+                manhattenLength = mhL;
+                iPoint = iP;
+                iList = iL;
+            }
+            iP++;
+        }
+        iL++;
+    }
+
+    return closestPoint;
+}
+
+void ImageViewer::remove(){
+    if(leftClick)
+    {
+        polygonPoints.removeAt(iPoint);
+        leftClick = false;
+    }
+    else if(rightClick)
+    {
+        /*QPolygonF z = polygonDoorsList.takeAt(iList);
+        z.removeAt(iPoint);
+        polygonDoorsList.insert(iList, z);*/
+        polygonDoorsList.removeAt(iList);
+        rightClick = false;
+    }
+
+    changePoint = false;
+    removeAct->setEnabled(false);
+    drawPolygon();
 }

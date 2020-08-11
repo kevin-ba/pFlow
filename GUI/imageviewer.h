@@ -33,6 +33,8 @@ private:
     void adjustScrollBar(QScrollBar *scrollBar, double factor);
     void drawPolygon();
     void reset();
+    void remove();
+    QPointF getClosestPoint(QPointF newPosition, QList<QPolygonF> polyList);
 
     QImage image;
     QLabel *imageLabel;
@@ -43,10 +45,18 @@ private:
     QAction *zoomOutAct;
     QAction *normalSizeAct;
     QAction *fitToWindowAct;
+    QAction *removeAct;
 
     QPolygonF polygonPoints;
     QPolygonF polygonDoor;
     QList<QPolygonF> polygonDoorsList;
+
+    int iPoint;
+    int iList;
+    QPointF closestPoint;
+    bool changePoint = false;
+    bool leftClick = false;
+    bool rightClick = false;
 };
 
 #endif // IMAGEVIEWER_H

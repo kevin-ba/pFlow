@@ -72,7 +72,7 @@
      <string notr="true">buttonGroup</string>
     </attribute>
    </widget>
-   <widget class="QPushButton" name="pushButton_4">
+   <widget class="QPushButton" name="saveFileButton">
     <property name="geometry">
      <rect>
       <x>670</x>

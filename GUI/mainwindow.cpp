@@ -18,11 +18,41 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+QPolygonF polygonPoints;
+QPolygonF polygonDoor;
+QList<QPolygonF> polygonDoorsList;
+
 void MainWindow::on_loadPictureButton_clicked()
 {
     const QString picturesLocations = QFileDialog::getOpenFileName(this,
         tr("Open Image"), "", tr("Image Files (*.png *.jpg *.bmp)"));
     loadFile(picturesLocations);
+}
+
+void MainWindow::on_saveFileButton_clicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,
+            tr("Save File"), "",
+            tr("ASCII-File (*.txt)"));
+    if (fileName.isEmpty())
+            return;
+    else
+    {
+        QFile file(fileName);
+        if (!file.open(QIODevice::WriteOnly))
+        {
+            QMessageBox::information(this, tr("Unable to open file"),
+                file.errorString());
+            return;
+        }
+
+        QDataStream out(&file);
+                out.setVersion(QDataStream::Qt_4_5);
+                foreach(QPointF point, polygonPoints)
+                {
+                    out << point; // noch falsches Format
+                }
+     }
 }
 
 void MainWindow::loadFile(const QString &fileName)
@@ -44,9 +74,6 @@ void MainWindow::loadFile(const QString &fileName)
     ui->graphicsView->show();
 }
 
-QPolygonF polygonPoints;
-QPolygonF polygonDoor;
-QList<QPolygonF> polygonDoorsList;
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
     if(event->button() == Qt::LeftButton)

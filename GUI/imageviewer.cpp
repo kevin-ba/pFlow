@@ -9,6 +9,8 @@
 #include <QMenuBar>
 #include <QApplication>
 #include <QScreen>
+#include <QMouseEvent>
+#include <qpainter.h>
 
 ImageViewer::ImageViewer(QWidget *parent)
    : QMainWindow(parent), imageLabel(new QLabel)
@@ -71,19 +73,57 @@ bool ImageViewer::loadFile(const QString &fileName)
                                  .arg(QDir::toNativeSeparators(fileName), reader.errorString()));
         return false;
     }
+    image = newImage;
+
     scaleFactor = 1.0;
 
     scrollArea->setVisible(true);
     fitToWindowAct->setEnabled(true);
     updateActions();
 
-    if (!fitToWindowAct->isChecked())
-        imageLabel->adjustSize();
-
     imageLabel->setPixmap(QPixmap::fromImage(newImage));
     imageLabel->show();
 
+    if (!fitToWindowAct->isChecked())
+        imageLabel->adjustSize();
+
     return true;
+}
+
+void ImageViewer::saveFile()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,
+            tr("Save File"), "",
+            tr("ASCII-File (*.txt)"));
+    if (fileName.isEmpty())
+            return;
+    else
+    {
+        QFile file(fileName);
+        if (!file.open(QIODevice::WriteOnly))
+        {
+            QMessageBox::information(this, tr("Unable to open file"),
+                file.errorString());
+            return;
+        }
+
+        QDataStream out(&file);
+                int x = 0;
+                foreach(QPointF point, polygonPoints)
+                {
+                    out << QStringLiteral("P%1\t%2\t%3\n").arg(x).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                    x++;
+                }
+                int i = 0;
+                foreach(QPolygonF door, polygonDoorsList)
+                {
+                    foreach(QPointF point, door)
+                    {
+                        out << QStringLiteral("D%1\t%2\t%3\n").arg(i).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                    }
+                    i++;
+                }
+     }
 }
 
 void ImageViewer::zoomIn()
@@ -135,10 +175,21 @@ void ImageViewer::createActions()
     QAction *openAct = fileMenu->addAction(tr("&Open..."), this, &ImageViewer::open);
     openAct->setShortcut(QKeySequence::Open);
 
+    QAction *saveAct = fileMenu->addAction(tr("&Save..."), this, &ImageViewer::saveFile);
+    saveAct->setShortcut(tr("Ctrl+S"));
+
+    QAction *resetAct = fileMenu->addAction(tr("&Reset"), this, &ImageViewer::reset);
+    resetAct->setShortcut(tr("Ctrl+R"));
+
     fileMenu->addSeparator();
 
     QAction *exitAct = fileMenu->addAction(tr("E&xit"), this, &QWidget::close);
     exitAct->setShortcut(tr("Ctrl+Q"));
+
+    QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
+    removeAct = editMenu->addAction(tr("&Remove"), this, &ImageViewer::remove);
+    removeAct->setShortcut(QKeySequence::Delete);
+    removeAct->setEnabled(false);
 
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
 
@@ -192,15 +243,142 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
                             + ((factor - 1) * scrollBar->pageStep()/2)));
 }
 
-
-#include <QMouseEvent>
 void ImageViewer::mousePressEvent(QMouseEvent *event)
 {
+    QPointF mousePoint = imageLabel->mapFromParent(event->pos());
+
     if(event->button() == Qt::LeftButton)
+    {
+        QList<QPolygonF> polyList;
+        if(polygonPoints.length() >= 1)
+            polyList.append(polygonPoints);
+        if(changePoint == false)
         {
-            QPointF mousePoint = imageLabel->mapFromParent(event->pos());
-            qDebug() << mousePoint;
-            // punkt abspeichern um polygonzug zu erstellen
-            // punkt bzw. polygonzug zeichnen
+            if((mousePoint - getClosestPoint(mousePoint, polyList)).manhattanLength() > 20)
+            {
+                polygonPoints << mousePoint;
+                qDebug() << polygonPoints;
+            } else
+            {
+                changePoint = true;
+                removeAct->setEnabled(true);
+                leftClick = true;
+                closestPoint = getClosestPoint(mousePoint, polyList);
+            }
         }
+        else if(changePoint)
+        {
+            changePoint = false;
+            polygonPoints.replace(iPoint, mousePoint);
+        }
+    }
+    if(event->button() == Qt::RightButton)
+    {
+        if(changePoint == false)
+        {
+            if((mousePoint - getClosestPoint(mousePoint, polygonDoorsList)).manhattanLength() > 20)
+            {
+                polygonDoor << mousePoint;
+                if(polygonDoor.length() == 2)
+                {
+                    polygonDoorsList.append(polygonDoor);
+                    polygonDoor.clear();
+                    qDebug() << polygonDoorsList;
+                }
+            } else
+            {
+                changePoint = true;
+                removeAct->setEnabled(true);
+                rightClick = true;
+                closestPoint = getClosestPoint(mousePoint, polygonDoorsList);
+            }
+        }
+        else if(changePoint == true)
+        {
+            changePoint = false;
+            QPolygonF z = polygonDoorsList.takeAt(iList);
+            z.replace(iPoint, mousePoint);
+            polygonDoorsList.insert(iList, z);
+        }
+    }
+
+    drawPolygon();
+}
+
+void ImageViewer::drawPolygon()
+{
+    QImage tmp(image);
+    QPainter *painter = new QPainter(&tmp); // new QPainter(&pixmap);
+    QPen pen(Qt::blue, 3);
+    painter->setPen(pen);
+    painter->drawPolygon(polygonPoints);
+    //alle Türen einzeichnen
+    pen = QPen(Qt::red, 5);
+    painter->setPen(pen);
+    foreach(QPolygonF door, polygonDoorsList)
+    {
+        painter->drawPolygon(door);
+    }
+    imageLabel->setPixmap(QPixmap::fromImage(tmp));
+}
+
+void ImageViewer::reset()
+{
+    polygonPoints.clear();
+    polygonDoorsList.clear();
+    imageLabel->setPixmap(QPixmap::fromImage(image));
+}
+
+QPointF ImageViewer::getClosestPoint(QPointF newPosition, QList<QPolygonF> polyList)
+{
+    QPointF closestPoint;
+    float manhattenLength;
+    if (polyList.length() >= 1)
+    {
+        closestPoint = polyList.first().first();
+        manhattenLength = (closestPoint - newPosition).manhattanLength();
+    }
+
+    iPoint = 0;
+    iList = 0;
+    int iL = 0;
+    foreach(QPolygonF poly, polyList)
+    {
+        int iP = 0;
+        foreach(QPointF point, poly)
+        {
+            float mhL = (point - newPosition).manhattanLength();
+            if(mhL < manhattenLength)
+            {
+                closestPoint = point;
+                manhattenLength = mhL;
+                iPoint = iP;
+                iList = iL;
+            }
+            iP++;
+        }
+        iL++;
+    }
+
+    return closestPoint;
+}
+
+void ImageViewer::remove(){
+    if(leftClick)
+    {
+        polygonPoints.removeAt(iPoint);
+        leftClick = false;
+    }
+    else if(rightClick)
+    {
+        /*QPolygonF z = polygonDoorsList.takeAt(iList);
+        z.removeAt(iPoint);
+        polygonDoorsList.insert(iList, z);*/
+        polygonDoorsList.removeAt(iList);
+        rightClick = false;
+    }
+
+    changePoint = false;
+    removeAct->setEnabled(false);
+    drawPolygon();
 }

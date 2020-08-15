@@ -156,19 +156,14 @@ void ImageViewer::fitToWindow()
 
 void ImageViewer::about()
 {
-    QMessageBox::about(this, tr("About Image Viewer"),
-            tr("<p>The <b>Image Viewer</b> example shows how to combine QLabel "
-               "and QScrollArea to display an image. QLabel is typically used "
-               "for displaying a text, but it can also display an image. "
-               "QScrollArea provides a scrolling view around another widget. "
-               "If the child widget exceeds the size of the frame, QScrollArea "
-               "automatically provides scroll bars. </p><p>The example "
-               "demonstrates how QLabel's ability to scale its contents "
-               "(QLabel::scaledContents), and QScrollArea's ability to "
-               "automatically resize its contents "
-               "(QScrollArea::widgetResizable), can be used to implement "
-               "zooming and scaling features. </p><p>In addition the example "
-               "shows how to use QPainter to print an image.</p>"));
+    QMessageBox::about(this, tr("About *Appname*"),
+            tr("<p><b>Normal-Point:</b> Leftclick "
+               "<p><b>Door-Point:</b> Rightclick "
+               "<p><b>Change Point:</b> Click and hold mousebutton on Point -> Move "
+               "Point to new location -> Release mousebutton</p>"
+               "<p><b>Insert:</b> Edit -> Insert -> Click between Segement</p>"
+               "</p><b>Remove:</b> Double click on Point -> Edit -> Remove </p>"
+               "<p>Hier können weitere Infos stehen</p>"));
 }
 
 void ImageViewer::createActions()
@@ -252,6 +247,68 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
                             + ((factor - 1) * scrollBar->pageStep()/2)));
 }
 
+void ImageViewer::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    if(!removePoint)
+    {
+        QPoint mousePoint = imageLabel->mapFromParent(event->pos());
+
+        QPoint mousePointReal;
+        mousePointReal.setX((mousePoint.x()) / scaleFactor);
+        mousePointReal.setY((mousePoint.y() - osOffset) / scaleFactor);
+
+        removePoint = true;
+        removeAct->setEnabled(true);
+
+        if(leftClick)
+        {
+            QList<QPolygon> polyList;
+            if(polygonPoints.length() >= 1)
+                polyList.append(polygonPoints);
+            closestPoint = getClosestPoint(mousePointReal, polyList);
+        }
+        else if(rightClick)
+            closestPoint = getClosestPoint(mousePointReal, polygonDoorsList);
+    }
+    else
+    {
+        removePoint = false;
+        removeAct->setEnabled(false);
+    }
+
+    drawPolygon();
+}
+
+void ImageViewer::mouseMoveEvent(QMouseEvent *event)
+{
+    QPoint mousePoint = imageLabel->mapFromParent(event->pos());
+
+    QPoint mousePointReal;
+    mousePointReal.setX((mousePoint.x()) / scaleFactor);
+    mousePointReal.setY((mousePoint.y() - osOffset) / scaleFactor);
+
+        if(leftClick)
+        {
+            QList<QPolygon> polyList;
+            if(polygonPoints.length() >= 1)
+                polyList.append(polygonPoints);
+
+            if((mousePointReal - getClosestPoint(mousePointReal, polyList)).manhattanLength() < 50)
+                polygonPoints.replace(iPoint, mousePointReal);
+        }
+        else if(rightClick)
+        {
+            if((mousePointReal - getClosestPoint(mousePointReal, polygonDoorsList)).manhattanLength() < 50)
+            {
+                QPolygon z = polygonDoorsList.takeAt(iList);
+                z.replace(iPoint, mousePointReal);
+                polygonDoorsList.insert(iList, z);
+            }
+        }
+
+    drawPolygon();
+}
+
 void ImageViewer::mousePressEvent(QMouseEvent *event)
 {
     QPoint mousePoint = imageLabel->mapFromParent(event->pos());
@@ -262,30 +319,18 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
 
     if(event->button() == Qt::LeftButton)
     {
+        leftClick = true;
+        rightClick = false;
         if(!insertPoint)
         {
             QList<QPolygon> polyList;
             if(polygonPoints.length() >= 1)
                 polyList.append(polygonPoints);
-            if(changePoint == false)
+
+            closestPoint = getClosestPoint(mousePointReal, polyList);
+            if((mousePointReal - closestPoint).manhattanLength() > 10)
             {
-                if((mousePointReal - getClosestPoint(mousePointReal, polyList)).manhattanLength() > 10)
-                {
-                    polygonPoints << mousePointReal;
-                    qDebug() << polygonPoints;
-                } else
-                {
-                    changePoint = true;
-                    removeAct->setEnabled(true);
-                    leftClick = true;
-                    closestPoint = getClosestPoint(mousePointReal, polyList);
-                }
-            }
-            else if(changePoint)
-            {
-                changePoint = false;
-                polygonPoints.replace(iPoint, mousePointReal);
-                removeAct->setEnabled(false);
+                polygonPoints << mousePointReal;
             }
         }
         else
@@ -295,32 +340,17 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
     }
     if(event->button() == Qt::RightButton)
     {
-        if(changePoint == false)
+        rightClick = true;
+        leftClick = false;
+        closestPoint = getClosestPoint(mousePointReal, polygonDoorsList);
+        if((mousePointReal - closestPoint).manhattanLength() > 10)
         {
-            if((mousePointReal - getClosestPoint(mousePointReal, polygonDoorsList)).manhattanLength() > 10)
+            polygonDoor << mousePointReal;
+            if(polygonDoor.length() == 2)
             {
-                polygonDoor << mousePointReal;
-                if(polygonDoor.length() == 2)
-                {
-                    polygonDoorsList.append(polygonDoor);
-                    polygonDoor.clear();
-                    qDebug() << polygonDoorsList;
-                }
-            } else
-            {
-                changePoint = true;
-                removeAct->setEnabled(true);
-                rightClick = true;
-                closestPoint = getClosestPoint(mousePoint, polygonDoorsList);
+                polygonDoorsList.append(polygonDoor);
+                polygonDoor.clear();
             }
-        }
-        else if(changePoint == true)
-        {
-            changePoint = false;
-            QPolygon z = polygonDoorsList.takeAt(iList);
-            z.replace(iPoint, mousePointReal);
-            polygonDoorsList.insert(iList, z);
-            removeAct->setEnabled(false);
         }
     }
 
@@ -332,22 +362,22 @@ void ImageViewer::drawPolygon()
     QImage tmp(image);
     QPainter *painter = new QPainter(&tmp);
 
-    QPen pen(Qt::green, 2);
+    QPen pen(Qt::green, 1);
     painter->setPen(pen);
     painter->drawPolygon(polygonPoints);
 
-    pen = QPen(Qt::black, 3);
+    pen = QPen(Qt::black, 2);
     painter->setPen(pen);
     painter->drawPoints(polygonPoints);
 
     //alle Türen einzeichnen
     foreach(QPolygon door, polygonDoorsList)
     {
-        pen = QPen(Qt::magenta, 2);
+        pen = QPen(Qt::magenta, 1);
         painter->setPen(pen);
         painter->drawPolygon(door);
 
-        pen = QPen(Qt::black, 3);
+        pen = QPen(Qt::black, 2);
         painter->setPen(pen);
         painter->drawPoints(door);
     }
@@ -355,7 +385,7 @@ void ImageViewer::drawPolygon()
     if(polygonDoor.length() == 1)
         painter->drawPoints(polygonDoor);
 
-    if(changePoint)
+    if(removePoint)
     {
         pen = QPen(Qt::red, 3);
         painter->setPen(pen);
@@ -370,7 +400,7 @@ void ImageViewer::reset()
     polygonPoints.clear();
     polygonDoorsList.clear();
     imageLabel->setPixmap(QPixmap::fromImage(image));
-    changePoint = false;
+    removePoint = false;
     removeAct->setEnabled(false);
     insertPoint = false;
 }
@@ -417,14 +447,11 @@ void ImageViewer::remove(){
     }
     else if(rightClick)
     {
-        /*QPolygon z = polygonDoorsList.takeAt(iList);
-        z.removeAt(iPoint);
-        polygonDoorsList.insert(iList, z);*/
         polygonDoorsList.removeAt(iList);
         rightClick = false;
     }
 
-    changePoint = false;
+    removePoint = false;
     removeAct->setEnabled(false);
     drawPolygon();
 }

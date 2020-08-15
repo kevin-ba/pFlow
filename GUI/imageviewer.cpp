@@ -254,9 +254,9 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
 
 void ImageViewer::mousePressEvent(QMouseEvent *event)
 {
-    QPointF mousePoint = imageLabel->mapFromParent(event->pos());
+    QPoint mousePoint = imageLabel->mapFromParent(event->pos());
 
-    QPointF mousePointReal;
+    QPoint mousePointReal;
     mousePointReal.setX((mousePoint.x()) / scaleFactor);
     mousePointReal.setY((mousePoint.y() - osOffset) / scaleFactor);
 
@@ -269,37 +269,37 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
                 polyList.append(polygonPoints);
             if(changePoint == false)
             {
-                if((mousePoint - getClosestPoint(mousePoint, polyList)).manhattanLength() > 10)
+                if((mousePointReal - getClosestPoint(mousePointReal, polyList)).manhattanLength() > 10)
                 {
-                    polygonPoints << mousePoint;
+                    polygonPoints << mousePointReal;
                     qDebug() << polygonPoints;
                 } else
                 {
                     changePoint = true;
                     removeAct->setEnabled(true);
                     leftClick = true;
-                    closestPoint = getClosestPoint(mousePoint, polyList);
+                    closestPoint = getClosestPoint(mousePointReal, polyList);
                 }
             }
             else if(changePoint)
             {
                 changePoint = false;
-                polygonPoints.replace(iPoint, mousePoint);
+                polygonPoints.replace(iPoint, mousePointReal);
                 removeAct->setEnabled(false);
             }
         }
         else
         {
-            insertNewPoint(mousePoint);
+            insertNewPoint(mousePointReal);
         }
     }
     if(event->button() == Qt::RightButton)
     {
         if(changePoint == false)
         {
-            if((mousePoint - getClosestPoint(mousePoint, polygonDoorsList)).manhattanLength() > 10)
+            if((mousePointReal - getClosestPoint(mousePointReal, polygonDoorsList)).manhattanLength() > 10)
             {
-                polygonDoor << mousePoint;
+                polygonDoor << mousePointReal;
                 if(polygonDoor.length() == 2)
                 {
                     polygonDoorsList.append(polygonDoor);
@@ -318,7 +318,7 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
         {
             changePoint = false;
             QPolygon z = polygonDoorsList.takeAt(iList);
-            z.replace(iPoint, mousePoint);
+            z.replace(iPoint, mousePointReal);
             polygonDoorsList.insert(iList, z);
             removeAct->setEnabled(false);
         }

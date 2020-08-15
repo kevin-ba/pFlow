@@ -20,6 +20,10 @@ ImageViewer::ImageViewer(QWidget *parent)
     imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     imageLabel->setScaledContents(true);
 
+    if (QSysInfo::productType() == "windows"){
+        osOffset = 20;
+    }
+
     scrollArea->setBackgroundRole(QPalette::Dark);
     scrollArea->setWidget(imageLabel);
     scrollArea->setVisible(false);
@@ -60,8 +64,6 @@ void ImageViewer::open()
     while (dialog.exec() == QDialog::Accepted && !loadFile(dialog.selectedFiles().first())) {}
 }
 
-#include <QGraphicsScene>
-#include <QGraphicsPixmapItem>
 bool ImageViewer::loadFile(const QString &fileName)
 {
     QImageReader reader(fileName);
@@ -73,15 +75,15 @@ bool ImageViewer::loadFile(const QString &fileName)
                                  .arg(QDir::toNativeSeparators(fileName), reader.errorString()));
         return false;
     }
-    image = newImage;
-
+    image = newImage;    
     scaleFactor = 1.0;
 
     scrollArea->setVisible(true);
     fitToWindowAct->setEnabled(true);
     updateActions();
+    QPixmap p = QPixmap::fromImage(image);
 
-    imageLabel->setPixmap(QPixmap::fromImage(newImage));
+    imageLabel->setPixmap(p);
     imageLabel->show();
 
     if (!fitToWindowAct->isChecked())
@@ -197,7 +199,7 @@ void ImageViewer::createActions()
     zoomOutAct->setEnabled(false);
 
     normalSizeAct = viewMenu->addAction(tr("&Normal Size"), this, &ImageViewer::normalSize);
-    normalSizeAct->setShortcut(tr("Ctrl+S"));
+    normalSizeAct->setShortcut(tr("Ctrl+V"));
     normalSizeAct->setEnabled(false);
 
     viewMenu->addSeparator();
@@ -225,6 +227,8 @@ void ImageViewer::scaleImage(double factor)
     scaleFactor *= factor;
     imageLabel->resize(scaleFactor * imageLabel->pixmap(Qt::ReturnByValue).size());
 
+
+
     adjustScrollBar(scrollArea->horizontalScrollBar(), factor);
     adjustScrollBar(scrollArea->verticalScrollBar(), factor);
 
@@ -241,14 +245,19 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
 void ImageViewer::mousePressEvent(QMouseEvent *event)
 {
     QPointF mousePoint = imageLabel->mapFromParent(event->pos());
+
+    QPointF mousePointReal;
+    mousePointReal.setX((mousePoint.x()) / scaleFactor);
+    mousePointReal.setY((mousePoint.y() - osOffset) / scaleFactor);
+
     if(event->button() == Qt::LeftButton)
     {
-        polygonPoints << mousePoint;
+        polygonPoints << mousePointReal;
         qDebug() << polygonPoints;
     }
     if(event->button() == Qt::RightButton)
     {
-        polygonDoor << mousePoint;
+        polygonDoor << mousePointReal;
         if(polygonDoor.length() == 2)
         {
             polygonDoorsList.append(polygonDoor);
@@ -260,7 +269,7 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
 }
 
 void ImageViewer::drawPolygon()
-{
+{    
     QImage tmp(image);
     QPainter *painter = new QPainter(&tmp); // new QPainter(&pixmap);
     QPen pen(Qt::blue, 3);

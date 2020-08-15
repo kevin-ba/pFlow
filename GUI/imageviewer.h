@@ -42,6 +42,8 @@ private:
     QImage image;
     QLabel *imageLabel;
     QScrollArea *scrollArea;
+    int osOffset = 0;
+
     double scaleFactor = 1;
 
     QAction *zoomInAct;

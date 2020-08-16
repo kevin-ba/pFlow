@@ -12,6 +12,7 @@
 #include <QMouseEvent>
 #include <qpainter.h>
 #include <QtMath>
+#include <limits>
 
 ImageViewer::ImageViewer(QWidget *parent)
    : QMainWindow(parent), imageLabel(new QLabel)
@@ -156,19 +157,14 @@ void ImageViewer::fitToWindow()
 
 void ImageViewer::about()
 {
-    QMessageBox::about(this, tr("About Image Viewer"),
-            tr("<p>The <b>Image Viewer</b> example shows how to combine QLabel "
-               "and QScrollArea to display an image. QLabel is typically used "
-               "for displaying a text, but it can also display an image. "
-               "QScrollArea provides a scrolling view around another widget. "
-               "If the child widget exceeds the size of the frame, QScrollArea "
-               "automatically provides scroll bars. </p><p>The example "
-               "demonstrates how QLabel's ability to scale its contents "
-               "(QLabel::scaledContents), and QScrollArea's ability to "
-               "automatically resize its contents "
-               "(QScrollArea::widgetResizable), can be used to implement "
-               "zooming and scaling features. </p><p>In addition the example "
-               "shows how to use QPainter to print an image.</p>"));
+    QMessageBox::about(this, tr("About *Appname*"),
+            tr("<p><b>Normal-Point:</b> Leftclick "
+               "<p><b>Door-Point:</b> Rightclick "
+               "<p><b>Change Point:</b> Click and hold mousebutton on point -> Move "
+               "point to new location -> Release mousebutton</p>"
+               "<p><b>Insert:</b> Edit -> Insert -> Click between segement</p>"
+               "</p><b>Remove:</b> Double click on point -> Edit -> Remove </p>"
+               "<p>Hier können weitere Infos stehen</p>"));
 }
 
 void ImageViewer::createActions()
@@ -195,7 +191,7 @@ void ImageViewer::createActions()
     removeAct->setEnabled(false);
 
     QAction *insertAct = editMenu->addAction(tr("&Insert Point"), this, &ImageViewer::insert);
-    insertAct->setShortcut(QKeySequence::InsertLineSeparator);
+    insertAct->setShortcut(tr("Ctrl+I"));
 
 
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
@@ -252,6 +248,76 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
                             + ((factor - 1) * scrollBar->pageStep()/2)));
 }
 
+void ImageViewer::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    QPoint mousePoint = imageLabel->mapFromParent(event->pos());
+
+    QPoint mousePointReal;
+    mousePointReal.setX((mousePoint.x()) / scaleFactor);
+    mousePointReal.setY((mousePoint.y() - osOffset) / scaleFactor);
+
+    if(!removePoint)
+    {
+        if(leftClick)
+        {
+            QList<QPolygon> polyList;
+            if(polygonPoints.length() >= 1)
+                polyList.append(polygonPoints);
+            closestPoint = getClosestPoint(mousePointReal, polyList);
+        }
+        else if(rightClick)
+            closestPoint = getClosestPoint(mousePointReal, polygonDoorsList);
+
+        if((mousePointReal - closestPoint).manhattanLength() < 20)
+        {
+            removePoint = true;
+            removeAct->setEnabled(true);
+        }
+    }
+    else
+    {
+        removePoint = false;
+        removeAct->setEnabled(false);
+    }
+
+    drawPolygon();
+}
+
+void ImageViewer::mouseMoveEvent(QMouseEvent *event)
+{
+    if(!insertPoint)
+    {
+        QPoint mousePoint = imageLabel->mapFromParent(event->pos());
+
+        QPoint mousePointReal;
+        mousePointReal.setX((mousePoint.x()) / scaleFactor);
+        mousePointReal.setY((mousePoint.y() - osOffset) / scaleFactor);
+
+            if(leftClick)
+            {
+                QList<QPolygon> polyList;
+                if(polygonPoints.length() >= 1)
+                    polyList.append(polygonPoints);
+
+                closestPoint = getClosestPoint(mousePointReal, polyList);
+                if((mousePointReal - closestPoint).manhattanLength() < 50)
+                    polygonPoints.replace(iPoint, mousePointReal);
+            }
+            else if(rightClick)
+            {
+                closestPoint = getClosestPoint(mousePointReal, polygonDoorsList);
+                if((mousePointReal - closestPoint).manhattanLength() < 50)
+                {
+                    QPolygon z = polygonDoorsList.takeAt(iList);
+                    z.replace(iPoint, mousePointReal);
+                    polygonDoorsList.insert(iList, z);
+                }
+            }
+
+        drawPolygon();
+    }
+}
+
 void ImageViewer::mousePressEvent(QMouseEvent *event)
 {
     QPoint mousePoint = imageLabel->mapFromParent(event->pos());
@@ -262,30 +328,18 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
 
     if(event->button() == Qt::LeftButton)
     {
+        leftClick = true;
+        rightClick = false;
         if(!insertPoint)
         {
             QList<QPolygon> polyList;
             if(polygonPoints.length() >= 1)
                 polyList.append(polygonPoints);
-            if(changePoint == false)
+
+            closestPoint = getClosestPoint(mousePointReal, polyList);
+            if((mousePointReal - closestPoint).manhattanLength() > 10)
             {
-                if((mousePointReal - getClosestPoint(mousePointReal, polyList)).manhattanLength() > 10)
-                {
-                    polygonPoints << mousePointReal;
-                    qDebug() << polygonPoints;
-                } else
-                {
-                    changePoint = true;
-                    removeAct->setEnabled(true);
-                    leftClick = true;
-                    closestPoint = getClosestPoint(mousePointReal, polyList);
-                }
-            }
-            else if(changePoint)
-            {
-                changePoint = false;
-                polygonPoints.replace(iPoint, mousePointReal);
-                removeAct->setEnabled(false);
+                polygonPoints << mousePointReal;
             }
         }
         else
@@ -295,32 +349,30 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
     }
     if(event->button() == Qt::RightButton)
     {
-        if(changePoint == false)
+        rightClick = true;
+        leftClick = false;
+        closestPoint = getClosestPoint(mousePointReal, polygonDoorsList);
+        if((mousePointReal - closestPoint).manhattanLength() > 10)
         {
-            if((mousePointReal - getClosestPoint(mousePointReal, polygonDoorsList)).manhattanLength() > 10)
+            if(polygonDoorsList.length() >= 1)
             {
-                polygonDoor << mousePointReal;
-                if(polygonDoor.length() == 2)
+                if(polygonDoorsList.last().length() == 1)
                 {
-                    polygonDoorsList.append(polygonDoor);
-                    polygonDoor.clear();
-                    qDebug() << polygonDoorsList;
+                    polygonDoorsList.last() << mousePointReal;
                 }
-            } else
-            {
-                changePoint = true;
-                removeAct->setEnabled(true);
-                rightClick = true;
-                closestPoint = getClosestPoint(mousePoint, polygonDoorsList);
+                else
+                {
+                    QPolygon poly;
+                    poly << mousePointReal;
+                    polygonDoorsList << poly;
+                }
             }
-        }
-        else if(changePoint == true)
-        {
-            changePoint = false;
-            QPolygon z = polygonDoorsList.takeAt(iList);
-            z.replace(iPoint, mousePointReal);
-            polygonDoorsList.insert(iList, z);
-            removeAct->setEnabled(false);
+            else
+            {
+                QPolygon poly;
+                poly << mousePointReal;
+                polygonDoorsList << poly;
+            }
         }
     }
 
@@ -332,36 +384,34 @@ void ImageViewer::drawPolygon()
     QImage tmp(image);
     QPainter *painter = new QPainter(&tmp);
 
-    QPen pen(Qt::green, 2);
+    QPen pen(Qt::green, 1);
     painter->setPen(pen);
     painter->drawPolygon(polygonPoints);
 
-    pen = QPen(Qt::black, 3);
+    pen = QPen(Qt::black, 2);
     painter->setPen(pen);
     painter->drawPoints(polygonPoints);
 
     //alle Türen einzeichnen
     foreach(QPolygon door, polygonDoorsList)
     {
-        pen = QPen(Qt::magenta, 2);
+        pen = QPen(Qt::magenta, 1);
         painter->setPen(pen);
         painter->drawPolygon(door);
 
-        pen = QPen(Qt::black, 3);
+        pen = QPen(Qt::black, 2);
         painter->setPen(pen);
         painter->drawPoints(door);
     }
 
-    if(polygonDoor.length() == 1)
-        painter->drawPoints(polygonDoor);
-
-    if(changePoint)
+    if(removePoint)
     {
         pen = QPen(Qt::red, 3);
         painter->setPen(pen);
         painter->drawPoint(closestPoint);
     }
 
+    painter->end();
     imageLabel->setPixmap(QPixmap::fromImage(tmp));
 }
 
@@ -370,7 +420,7 @@ void ImageViewer::reset()
     polygonPoints.clear();
     polygonDoorsList.clear();
     imageLabel->setPixmap(QPixmap::fromImage(image));
-    changePoint = false;
+    removePoint = false;
     removeAct->setEnabled(false);
     insertPoint = false;
 }
@@ -378,12 +428,7 @@ void ImageViewer::reset()
 QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> polyList)
 {
     QPoint closestPoint;
-    float manhattenLength;
-    if (polyList.length() >= 1)
-    {
-        closestPoint = polyList.first().first();
-        manhattenLength = (closestPoint - newPosition).manhattanLength();
-    }
+    float manhattenLength = std::numeric_limits<float>::max();
 
     iPoint = 0;
     iList = 0;
@@ -417,14 +462,11 @@ void ImageViewer::remove(){
     }
     else if(rightClick)
     {
-        /*QPolygon z = polygonDoorsList.takeAt(iList);
-        z.removeAt(iPoint);
-        polygonDoorsList.insert(iList, z);*/
         polygonDoorsList.removeAt(iList);
         rightClick = false;
     }
 
-    changePoint = false;
+    removePoint = false;
     removeAct->setEnabled(false);
     drawPolygon();
 }
@@ -441,10 +483,9 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
 {
     int index = 0;
     int j;
-    float minDist;
+    float minDist = std::numeric_limits<float>::max();
     float dist;
-    if(polygonPoints.length() > 1)
-        minDist = distToSegment(newPoint, polygonPoints.at(0), polygonPoints.at(1));
+
     for(int i = 0; i < polygonPoints.length(); i++)
     {
         if(i < polygonPoints.length() - 1)
@@ -453,7 +494,6 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
             j = 0;
 
         dist = distToSegment(newPoint, polygonPoints.at(i), polygonPoints.at(j));
-        qDebug() << polygonPoints.at(i) << polygonPoints.at(j) << dist;
         if(dist < minDist)
         {
             minDist = dist;
@@ -462,49 +502,38 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
     }
 
     polygonPoints.insert(index+1, newPoint);
-
-    qDebug() << minDist << " " << index;
-    qDebug() << "polygon: " << polygonPoints;
     insertPoint = false;
 }
 
 float ImageViewer::distToSegment(QPoint newPoint, QPoint p1, QPoint p2)
 {
-    int x = newPoint.x();
-    int y = newPoint.y();
     int x1 = p1.x();
     int y1 = p1.y();
     int x2 = p2.x();
     int y2 = p2.y();
+    int x3 = newPoint.x();
+    int y3 = newPoint.y();
 
-    int A = x - x1;
-    int B = y - y1;
-    int C = x2 - x1;
-    int D = y2 - y1;
+    float px=x2-x1;
+    float py=y2-y1;
+    float temp=(px*px)+(py*py);
+    float u=((x3 - x1) * px + (y3 - y1) * py) / (temp);
 
-    int dot = A * C + B * D;
-    int len_sq = C * C + D * D;
-    float param = -1;
-    if (len_sq != 0)
-      param = dot / len_sq;
-
-    float xx, yy;
-
-    if (param < 0) {
-    xx = x1;
-    yy = y1;
+    if(u>1)
+    {
+        u=1;
     }
-    else if (param > 1) {
-    xx = x2;
-    yy = y2;
-    }
-    else {
-    xx = x1 + param * C;
-    yy = y1 + param * D;
+    else if(u<0)
+    {
+        u=0;
     }
 
-    float dx = x - xx;
-    float dy = y - yy;
+    float x = x1 + u * px;
+    float y = y1 + u * py;
 
-    return qSqrt(dx * dx + dy * dy);
+    float dx = x - x3;
+    float dy = y - y3;
+
+    return qSqrt(dx*dx + dy*dy);
+
 }

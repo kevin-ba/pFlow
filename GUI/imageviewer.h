@@ -23,6 +23,8 @@ private slots:
     void fitToWindow();
     void about();
     void mousePressEvent(QMouseEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
+    void mouseDoubleClickEvent(QMouseEvent *event);
 
 private:
     void createActions();
@@ -59,7 +61,7 @@ private:
     int iPoint;
     int iList;
     QPoint closestPoint;
-    bool changePoint = false;
+    bool removePoint = false;
     bool leftClick = false;
     bool rightClick = false;
 

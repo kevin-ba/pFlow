@@ -22,7 +22,7 @@ ImageViewer::ImageViewer(QWidget *parent)
     imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     imageLabel->setScaledContents(true);
 
-    if (QSysInfo::productType() == "windows"){
+    if (QSysInfo::productType() == "windows" || QSysInfo::productType() == "android" ){
         osOffset = 20;
     }
 

@@ -44,7 +44,7 @@ private:
     QImage image;
     QLabel *imageLabel;
     QScrollArea *scrollArea;
-    int osOffset = 0;
+    int osOffset = 20;
 
     double scaleFactor = 1;
 

@@ -22,8 +22,8 @@ ImageViewer::ImageViewer(QWidget *parent)
     imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     imageLabel->setScaledContents(true);
 
-    if (QSysInfo::productType() == "windows" || QSysInfo::productType() == "android" ){
-        osOffset = 20;
+    if (QSysInfo::productType() == "osx"){
+        osOffset = 0;
     }
 
     scrollArea->setBackgroundRole(QPalette::Dark);

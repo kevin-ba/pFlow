@@ -13,10 +13,12 @@ class ImageViewer : public QMainWindow
 public:
     ImageViewer(QWidget *parent = nullptr);
     bool loadFile(const QString &);
-    void saveFile();
+    void exportFile();
+    bool importFile(const QString &);
 
 private slots:
     void open();
+    void openTxt();
     void zoomIn();
     void zoomOut();
     void normalSize();
@@ -35,9 +37,9 @@ private:
     void adjustScrollBar(QScrollBar *scrollBar, double factor);
     void drawPolygon();
     void reset();
-    void newPoly();
+    void newPoly(QString color);
     void remove();
-    QPoint getClosestPoint(QPoint newPosition, QList<QPolygon> polyList);
+    QPoint getClosestPoint(QPoint newPosition, QList<QPolygon> );
     void insert();
     void insertNewPoint(QPoint newPoint);
     float distToSegment(QPoint newPoint, QPoint p1, QPoint p2);
@@ -54,8 +56,11 @@ private:
     QAction *normalSizeAct;
     QAction *fitToWindowAct;
     QAction *removeAct;
+    QAction *importFileAct;
+    QAction *exportFileAct;
+    QAction *insertAct;
+    QAction *resetAct;
 
-    QPolygon polygonPoints;
     QPolygon polygonDoor;
     QList<QPolygon> polygonDoorsList;
 
@@ -69,11 +74,31 @@ private:
     bool insertPoint = false;
 
     // New Polygon
+    void newPolyGreen();
+    void newPolyRed();
+    void newPolyBlue();
+
     QAction *newPolyGreenAct;
     QAction *newPolyRedAct;
     QAction *newPolyBlueAct;
 
-    int polyCount;
+    QList<QString> polyCount = {"blue"};
+    QList<QPolygon> polyList;
+
+
+    int lineWidth = 1;
+    int pointWidth = 2;
+    void increaseLine();
+    void increasePoint();
+    void decreaseLine();
+    void decreasePoint();
+
+    QAction *incLineAct;
+    QAction *incPointAct;
+    QAction *decLineAct;
+    QAction *decPointAct;
+
+
 };
 
 #endif // IMAGEVIEWER_H

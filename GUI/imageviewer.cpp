@@ -26,6 +26,8 @@ ImageViewer::ImageViewer(QWidget *parent)
         osOffset = 0;
     }
 
+    polyList.append(QPolygon());
+
     scrollArea->setBackgroundRole(QPalette::Dark);
     scrollArea->setWidget(imageLabel);
     scrollArea->setVisible(false);
@@ -36,7 +38,7 @@ ImageViewer::ImageViewer(QWidget *parent)
     resize(QGuiApplication::primaryScreen()->availableSize() * 3 / 5);
 }
 
-static void initializeImageFileDialog(QFileDialog &dialog, QFileDialog::AcceptMode acceptMode)
+static void initializeImageFileDialog(QFileDialog &dialog, QFileDialog::AcceptMode acceptMode, QString typeFilter, QString defaultSuffix)
 {
     static bool firstDialog = true;
 
@@ -53,15 +55,30 @@ static void initializeImageFileDialog(QFileDialog &dialog, QFileDialog::AcceptMo
         mimeTypeFilters.append(mimeTypeName);
     mimeTypeFilters.sort();
     dialog.setMimeTypeFilters(mimeTypeFilters);
-    dialog.selectMimeTypeFilter("image/jpeg");
+    dialog.selectMimeTypeFilter(typeFilter);
     if (acceptMode == QFileDialog::AcceptSave)
-        dialog.setDefaultSuffix("jpg");
+        dialog.setDefaultSuffix(defaultSuffix);
+}
+
+static void initializeTextFileDialog(QFileDialog &dialog, QFileDialog::AcceptMode acceptMode, QString typeFilter, QString defaultSuffix)
+{
+    static bool firstDialog = true;
+
+    if (firstDialog) {
+        firstDialog = false;
+        const QStringList fileLocations = QStandardPaths::standardLocations(QStandardPaths::DesktopLocation);
+        dialog.setDirectory(fileLocations.isEmpty() ? QDir::currentPath() : fileLocations.last());
+    }
+
+    dialog.selectMimeTypeFilter(typeFilter);
+    if (acceptMode == QFileDialog::AcceptSave)
+        dialog.setDefaultSuffix(defaultSuffix);
 }
 
 void ImageViewer::open()
 {
     QFileDialog dialog(this, tr("Open File"));
-    initializeImageFileDialog(dialog, QFileDialog::AcceptOpen);
+    initializeImageFileDialog(dialog, QFileDialog::AcceptOpen, "image/jpeg", "jpg");
 
     while (dialog.exec() == QDialog::Accepted && !loadFile(dialog.selectedFiles().first())) {}
 }
@@ -91,13 +108,71 @@ bool ImageViewer::loadFile(const QString &fileName)
     if (!fitToWindowAct->isChecked())
         imageLabel->adjustSize();
 
+    ImageViewer::reset();
+
     return true;
 }
 
-void ImageViewer::saveFile()
+void ImageViewer::openTxt()
+{
+    QFileDialog dialog(this, tr("Open File"), QDir::currentPath(), tr("text files (*.txt)"));
+    initializeTextFileDialog(dialog, QFileDialog::AcceptOpen, "text/plain", "txt");
+
+    while (dialog.exec() == QDialog::Accepted && !importFile(dialog.selectedFiles().first())) {}
+}
+
+bool ImageViewer::importFile(const QString &fileName)
+{
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+
+    ImageViewer::reset();
+    polyList.clear();
+    polyCount.clear();
+    polygonDoorsList.clear();
+
+    QTextStream in(&file);
+
+    QStringList stringList;
+    bool isPoly;
+    int countP = 0;
+    int countD = 0;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+       if(line.startsWith("P")){
+           isPoly = true;
+           stringList = line.split(", ");
+           polyCount.append(stringList[1]);
+           countP++;
+           polyList.append(QPolygon());
+       } else if(line.startsWith("D")){
+           isPoly = false;
+           countD++;
+           polygonDoorsList.append(QPolygon());
+       } else {
+           if(isPoly){
+               stringList = line.split(" ");
+               polyList[countP-1].append(QPoint(stringList[0].toFloat(), stringList[1].toFloat()));
+           }else if(!isPoly){
+               stringList = line.split(" ");
+               polygonDoorsList[countD-1].append(QPoint(stringList[0].toFloat(), stringList[1].toFloat()));
+           }
+       }
+    }
+
+    qDebug() << polyList;
+
+    ImageViewer::drawPolygon();
+    return true;
+}
+
+void ImageViewer::exportFile()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
-            tr("Save File"), "",
+            tr("Export File"), "",
             tr("ASCII-File (*.txt)"));
     if (fileName.isEmpty())
             return;
@@ -113,17 +188,24 @@ void ImageViewer::saveFile()
 
         QTextStream out(&file);
                 int x = 0;
-                foreach(QPoint point, polygonPoints)
+                int y = 0;
+                foreach(QPolygon poly, polyList)
                 {
-                    out << QStringLiteral("P%1\t%2\t%3\n").arg(x).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                    out << QStringLiteral("P, %1, %2\n").arg(polyCount[x]).arg(polyList[x].length());
+                    foreach(QPoint point, poly)
+                    {
+                        out << QStringLiteral("%1 %2\n").arg(QString::number(point.x())).arg(QString::number(point.y()));
+                        y++;
+                    }
                     x++;
                 }
                 int i = 0;
                 foreach(QPolygon door, polygonDoorsList)
                 {
+                    out << QStringLiteral("D\n");
                     foreach(QPoint point, door)
                     {
-                        out << QStringLiteral("D%1\t%2\t%3\n").arg(i).arg(QString::number(point.x())).arg(QString::number(point.y()));
+                        out << QStringLiteral("%1 %2\n").arg(QString::number(point.x())).arg(QString::number(point.y()));
                     }
                     i++;
                 }
@@ -176,11 +258,17 @@ void ImageViewer::createActions()
     QAction *openAct = fileMenu->addAction(tr("&Open..."), this, &ImageViewer::open);
     openAct->setShortcut(QKeySequence::Open);
 
-    QAction *saveAct = fileMenu->addAction(tr("&Save..."), this, &ImageViewer::saveFile);
-    saveAct->setShortcut(tr("Ctrl+S"));
+    QAction *importAct = fileMenu->addAction(tr("&Import..."), this, &ImageViewer::openTxt);
+    importAct->setShortcut(tr("Ctrl+N"));
+//    importAct->setEnabled(false);
+
+    QAction *exportAct = fileMenu->addAction(tr("&Export..."), this, &ImageViewer::exportFile);
+    exportAct->setShortcut(tr("Ctrl+S"));
+//    exportAct->setEnabled(false);
 
     QAction *resetAct = fileMenu->addAction(tr("&Reset"), this, &ImageViewer::reset);
     resetAct->setShortcut(tr("Ctrl+R"));
+//    resetAct->setEnabled(false);
 
     fileMenu->addSeparator();
 
@@ -194,18 +282,21 @@ void ImageViewer::createActions()
 
     QAction *insertAct = editMenu->addAction(tr("&Insert Point"), this, &ImageViewer::insert);
     insertAct->setShortcut(tr("Ctrl+I"));
+//    insertAct->setEnabled(false);
 
     editMenu->addSeparator();
 
-    QAction *newPolyGreenAct = editMenu->addAction(tr("&New Polygon (Green)"), this, &ImageViewer::newPoly);
+    QAction *newPolyGreenAct = editMenu->addAction(tr("&New Polygon (Green)"), this, &ImageViewer::newPolyGreen);
     newPolyGreenAct->setShortcut(tr("Ctrl+1"));
+//    newPolyGreenAct->setEnabled(false);
 
-    QAction *newPolyRedAct = editMenu->addAction(tr("&New Polygon (Red)"), this, &ImageViewer::newPoly);
+    QAction *newPolyRedAct = editMenu->addAction(tr("&New Polygon (Red)"), this, &ImageViewer::newPolyRed);
     newPolyRedAct->setShortcut(tr("Ctrl+2"));
+//    newPolyRedAct->setEnabled(false);
 
-    QAction *newPolyBlueAct = editMenu->addAction(tr("&New Polygon (Blue)"), this, &ImageViewer::newPoly);
+    QAction *newPolyBlueAct = editMenu->addAction(tr("&New Polygon (Blue)"), this, &ImageViewer::newPolyBlue);
     newPolyBlueAct->setShortcut(tr("Ctrl+3"));
-
+//    newPolyBlueAct->setEnabled(false);
 
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
 
@@ -228,6 +319,21 @@ void ImageViewer::createActions()
     fitToWindowAct->setCheckable(true);
     fitToWindowAct->setShortcut(tr("Ctrl+F"));
 
+    viewMenu->addSeparator();
+
+    incLineAct = viewMenu->addAction(tr("&Increase Line Width"), this, &ImageViewer::increaseLine);
+    incLineAct->setShortcut(tr("Ctrl+6"));
+
+    decLineAct = viewMenu->addAction(tr("&Decrease Line Width"), this, &ImageViewer::decreaseLine);
+    decLineAct->setShortcut(tr("Ctrl+7"));
+
+    incPointAct = viewMenu->addAction(tr("&Increase Point Width"), this, &ImageViewer::increasePoint);
+    incPointAct->setShortcut(tr("Ctrl+8"));
+
+    decPointAct = viewMenu->addAction(tr("&Decrease Point Width"), this, &ImageViewer::decreasePoint);
+    decPointAct->setShortcut(tr("Ctrl+9"));
+
+
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
 
     helpMenu->addAction(tr("&About"), this, &ImageViewer::about);
@@ -239,6 +345,13 @@ void ImageViewer::updateActions()
     zoomInAct->setEnabled(!fitToWindowAct->isChecked());
     zoomOutAct->setEnabled(!fitToWindowAct->isChecked());
     normalSizeAct->setEnabled(!fitToWindowAct->isChecked());
+//    importFileAct->setEnabled(true);
+//    exportFileAct->setEnabled(true);
+//    newPolyGreenAct->setEnabled(true);
+//    newPolyRedAct->setEnabled(true);
+//    newPolyBlueAct->setEnabled(true);
+//    resetAct->setEnabled(true);
+//    insertAct->setEnabled(true);
 }
 
 void ImageViewer::scaleImage(double factor)
@@ -261,6 +374,21 @@ void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
                             + ((factor - 1) * scrollBar->pageStep()/2)));
 }
 
+void ImageViewer::newPolyGreen()
+{
+    ImageViewer::newPoly("#00ff00");
+}
+
+void ImageViewer::newPolyRed()
+{
+    ImageViewer::newPoly("#ff0000");
+}
+
+void ImageViewer::newPolyBlue()
+{
+    ImageViewer::newPoly("#0000ff");
+}
+
 void ImageViewer::mouseDoubleClickEvent(QMouseEvent *event)
 {
     QPoint mousePoint = imageLabel->mapFromParent(event->pos());
@@ -275,9 +403,6 @@ void ImageViewer::mouseDoubleClickEvent(QMouseEvent *event)
         {
             leftClick = true;
             rightClick = false;
-            QList<QPolygon> polyList;
-            if(polygonPoints.length() >= 1)
-                polyList.append(polygonPoints);
             closestPoint = getClosestPoint(mousePointReal, polyList);
         }
         else if(event->buttons() & Qt::RightButton)
@@ -314,13 +439,9 @@ void ImageViewer::mouseMoveEvent(QMouseEvent *event)
 
         if(event->buttons() & Qt::LeftButton)
         {
-            QList<QPolygon> polyList;
-            if(polygonPoints.length() >= 1)
-                polyList.append(polygonPoints);
-
             closestPoint = getClosestPoint(mousePointReal, polyList);
             if((mousePointReal - closestPoint).manhattanLength() < 50)
-                polygonPoints.replace(iPoint, mousePointReal);
+                polyList[polyCount.length()-1].replace(iPoint, mousePointReal);
         }
         else if(event->buttons() & Qt::RightButton)
         {
@@ -349,14 +470,10 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
     {
         if(!insertPoint)
         {
-            QList<QPolygon> polyList;
-            if(polygonPoints.length() >= 1)
-                polyList.append(polygonPoints);
-
             closestPoint = getClosestPoint(mousePointReal, polyList);
             if((mousePointReal - closestPoint).manhattanLength() > 10)
             {
-                polygonPoints << mousePointReal;
+                polyList[polyCount.length()-1] << mousePointReal;
             }
         }
         else
@@ -398,23 +515,29 @@ void ImageViewer::drawPolygon()
 {
     QImage tmp(image);
     QPainter *painter = new QPainter(&tmp);
+    QPen pen;
+    int c = 0;
+    foreach(QPolygon poly, polyList)
+    {
+        QColor color;
+        color.setNamedColor(polyCount[c]);
+        pen = QPen(color, lineWidth);
+        painter->setPen(pen);
+        painter->drawPolygon(poly);
 
-    QPen pen(Qt::blue, 1);
-    painter->setPen(pen);
-    painter->drawPolygon(polygonPoints);
-
-    pen = QPen(Qt::black, 2);
-    painter->setPen(pen);
-    painter->drawPoints(polygonPoints);
-
+        pen = QPen(Qt::black, pointWidth);
+        painter->setPen(pen);
+        painter->drawPoints(poly);
+        c++;
+    }
     //alle Türen einzeichnen
     foreach(QPolygon door, polygonDoorsList)
     {
-        pen = QPen(Qt::magenta, 1);
+        pen = QPen(Qt::magenta, lineWidth);
         painter->setPen(pen);
         painter->drawPolygon(door);
 
-        pen = QPen(Qt::black, 2);
+        pen = QPen(Qt::black, pointWidth);
         painter->setPen(pen);
         painter->drawPoints(door);
     }
@@ -432,15 +555,19 @@ void ImageViewer::drawPolygon()
 
 void ImageViewer::reset()
 {
-    polygonPoints.clear();
+    qDebug() << polyList;
+    polyList.clear();
+    polyCount.clear();
     polygonDoorsList.clear();
     imageLabel->setPixmap(QPixmap::fromImage(image));
     removePoint = false;
     removeAct->setEnabled(false);
     insertPoint = false;
+    polyList.append(QPolygon());
+    polyCount.append("#0000ff");
 }
 
-QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> polyList)
+QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> list)
 {
     QPoint closestPoint;
     float manhattenLength = std::numeric_limits<float>::max();
@@ -448,7 +575,7 @@ QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> polyList
     iPoint = 0;
     iList = 0;
     int iL = 0;
-    foreach(QPolygon poly, polyList)
+    foreach(QPolygon poly, list)
     {
         int iP = 0;
         foreach(QPoint point, poly)
@@ -472,7 +599,7 @@ QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> polyList
 void ImageViewer::remove(){
     if(leftClick)
     {
-        polygonPoints.removeAt(iPoint);
+        polyList[polyCount.length()-1].removeAt(iPoint);
         leftClick = false;
     }
     else if(rightClick)
@@ -501,14 +628,14 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
     float minDist = std::numeric_limits<float>::max();
     float dist;
 
-    for(int i = 0; i < polygonPoints.length(); i++)
+    for(int i = 0; i < polyList[polyCount.length()-1].length(); i++)
     {
-        if(i < polygonPoints.length() - 1)
+        if(i < polyList[polyCount.length()-1].length() - 1)
             j = i + 1;
         else
             j = 0;
 
-        dist = distToSegment(newPoint, polygonPoints.at(i), polygonPoints.at(j));
+        dist = distToSegment(newPoint, polyList[polyCount.length()-1].at(i), polyList[polyCount.length()-1].at(j));
         if(dist < minDist)
         {
             minDist = dist;
@@ -517,9 +644,9 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
     }
 
     if(index == 0)
-        polygonPoints << newPoint;
+        polyList[polyCount.length()-1] << newPoint;
     else
-        polygonPoints.insert(index+1, newPoint);
+        polyList[polyCount.length()-1].insert(index+1, newPoint);
 
     insertPoint = false;
 }
@@ -557,7 +684,32 @@ float ImageViewer::distToSegment(QPoint newPoint, QPoint p1, QPoint p2)
 
 }
 
-void ImageViewer::newPoly()
+void ImageViewer::newPoly(QString color)
 {
-    polyCount++;
+    polyCount.append(color);
+    polyList.append(QPolygon());
+}
+
+void ImageViewer::increaseLine(){
+    if(lineWidth < 7)
+        lineWidth++;
+    drawPolygon();
+}
+
+void ImageViewer::increasePoint(){
+    if(pointWidth < 10)
+        pointWidth++;
+    drawPolygon();
+}
+
+void ImageViewer::decreaseLine(){
+    if(lineWidth > 1)
+        lineWidth--;
+    drawPolygon();
+}
+
+void ImageViewer::decreasePoint(){
+    if(pointWidth > 1)
+        pointWidth--;
+    drawPolygon();
 }

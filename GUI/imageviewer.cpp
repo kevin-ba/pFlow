@@ -195,6 +195,17 @@ void ImageViewer::createActions()
     QAction *insertAct = editMenu->addAction(tr("&Insert Point"), this, &ImageViewer::insert);
     insertAct->setShortcut(tr("Ctrl+I"));
 
+    editMenu->addSeparator();
+
+    QAction *newPolyGreenAct = editMenu->addAction(tr("&New Polygon (Green)"), this, &ImageViewer::newPoly);
+    newPolyGreenAct->setShortcut(tr("Ctrl+1"));
+
+    QAction *newPolyRedAct = editMenu->addAction(tr("&New Polygon (Red)"), this, &ImageViewer::newPoly);
+    newPolyRedAct->setShortcut(tr("Ctrl+2"));
+
+    QAction *newPolyBlueAct = editMenu->addAction(tr("&New Polygon (Blue)"), this, &ImageViewer::newPoly);
+    newPolyBlueAct->setShortcut(tr("Ctrl+3"));
+
 
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
 
@@ -544,4 +555,9 @@ float ImageViewer::distToSegment(QPoint newPoint, QPoint p1, QPoint p2)
 
     return qSqrt(dx*dx + dy*dy);
 
+}
+
+void ImageViewer::newPoly()
+{
+    polyCount++;
 }

@@ -35,6 +35,7 @@ private:
     void adjustScrollBar(QScrollBar *scrollBar, double factor);
     void drawPolygon();
     void reset();
+    void newPoly();
     void remove();
     QPoint getClosestPoint(QPoint newPosition, QList<QPolygon> polyList);
     void insert();
@@ -66,6 +67,13 @@ private:
     bool rightClick = false;
 
     bool insertPoint = false;
+
+    // New Polygon
+    QAction *newPolyGreenAct;
+    QAction *newPolyRedAct;
+    QAction *newPolyBlueAct;
+
+    int polyCount;
 };
 
 #endif // IMAGEVIEWER_H

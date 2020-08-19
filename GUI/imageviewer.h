@@ -13,14 +13,15 @@ class ImageViewer : public QMainWindow
 public:
     ImageViewer(QWidget *parent = nullptr);
     bool loadFile(const QString &);
-    void saveFile();
+    void exportFile();
+    bool importFile(const QString &);
 
 private slots:
     void open();
+    void openTxt();
     void zoomIn();
     void zoomOut();
     void normalSize();
-    void fitToWindow();
     void about();
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
@@ -29,14 +30,14 @@ private slots:
 private:
     void createActions();
     void createMenus();
-    void updateActions();
     void setImage(const QImage &newImage);
     void scaleImage(double factor);
     void adjustScrollBar(QScrollBar *scrollBar, double factor);
     void drawPolygon();
     void reset();
+    void newPoly(QString color);
     void remove();
-    QPoint getClosestPoint(QPoint newPosition, QList<QPolygon> polyList);
+    QPoint getClosestPoint(QPoint newPosition, QList<QPolygon> );
     void insert();
     void insertNewPoint(QPoint newPoint);
     float distToSegment(QPoint newPoint, QPoint p1, QPoint p2);
@@ -51,10 +52,12 @@ private:
     QAction *zoomInAct;
     QAction *zoomOutAct;
     QAction *normalSizeAct;
-    QAction *fitToWindowAct;
     QAction *removeAct;
+    QAction *importFileAct;
+    QAction *exportFileAct;
+    QAction *insertAct;
+    QAction *resetAct;
 
-    QPolygon polygonPoints;
     QPolygon polygonDoor;
     QList<QPolygon> polygonDoorsList;
 
@@ -66,6 +69,33 @@ private:
     bool rightClick = false;
 
     bool insertPoint = false;
+
+    // New Polygon
+    void newPolyGreen();
+    void newPolyRed();
+    void newPolyBlue();
+
+    QAction *newPolyGreenAct;
+    QAction *newPolyRedAct;
+    QAction *newPolyBlueAct;
+
+    QList<QString> polyCount = {"blue"};
+    QList<QPolygon> polyList;
+
+
+    int lineWidth = 1;
+    int pointWidth = 2;
+    void increaseLine();
+    void increasePoint();
+    void decreaseLine();
+    void decreasePoint();
+
+    QAction *incLineAct;
+    QAction *incPointAct;
+    QAction *decLineAct;
+    QAction *decPointAct;
+
+
 };
 
 #endif // IMAGEVIEWER_H

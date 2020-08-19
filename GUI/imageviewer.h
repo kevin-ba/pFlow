@@ -22,7 +22,6 @@ private slots:
     void zoomIn();
     void zoomOut();
     void normalSize();
-    void fitToWindow();
     void about();
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
@@ -31,7 +30,6 @@ private slots:
 private:
     void createActions();
     void createMenus();
-    void updateActions();
     void setImage(const QImage &newImage);
     void scaleImage(double factor);
     void adjustScrollBar(QScrollBar *scrollBar, double factor);
@@ -54,7 +52,6 @@ private:
     QAction *zoomInAct;
     QAction *zoomOutAct;
     QAction *normalSizeAct;
-    QAction *fitToWindowAct;
     QAction *removeAct;
     QAction *importFileAct;
     QAction *exportFileAct;

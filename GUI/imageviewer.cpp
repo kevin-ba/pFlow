@@ -98,15 +98,12 @@ bool ImageViewer::loadFile(const QString &fileName)
     scaleFactor = 1.0;
 
     scrollArea->setVisible(true);
-    fitToWindowAct->setEnabled(true);
-    updateActions();
     QPixmap p = QPixmap::fromImage(image);
 
     imageLabel->setPixmap(p);
     imageLabel->show();
 
-    if (!fitToWindowAct->isChecked())
-        imageLabel->adjustSize();
+    imageLabel->adjustSize();
 
     ImageViewer::reset();
 
@@ -228,15 +225,6 @@ void ImageViewer::normalSize()
     scaleFactor = 1.0;
 }
 
-void ImageViewer::fitToWindow()
-{
-    bool fitToWindow = fitToWindowAct->isChecked();
-    scrollArea->setWidgetResizable(fitToWindow);
-    if (!fitToWindow)
-        normalSize();
-    updateActions();
-}
-
 void ImageViewer::about()
 {
     QMessageBox::about(this, tr("About *Appname*"),
@@ -260,15 +248,12 @@ void ImageViewer::createActions()
 
     QAction *importAct = fileMenu->addAction(tr("&Import..."), this, &ImageViewer::openTxt);
     importAct->setShortcut(tr("Ctrl+N"));
-//    importAct->setEnabled(false);
 
     QAction *exportAct = fileMenu->addAction(tr("&Export..."), this, &ImageViewer::exportFile);
     exportAct->setShortcut(tr("Ctrl+S"));
-//    exportAct->setEnabled(false);
 
     QAction *resetAct = fileMenu->addAction(tr("&Reset"), this, &ImageViewer::reset);
     resetAct->setShortcut(tr("Ctrl+R"));
-//    resetAct->setEnabled(false);
 
     fileMenu->addSeparator();
 
@@ -282,42 +267,28 @@ void ImageViewer::createActions()
 
     QAction *insertAct = editMenu->addAction(tr("&Insert Point"), this, &ImageViewer::insert);
     insertAct->setShortcut(tr("Ctrl+I"));
-//    insertAct->setEnabled(false);
 
     editMenu->addSeparator();
 
     QAction *newPolyGreenAct = editMenu->addAction(tr("&New Polygon (Green)"), this, &ImageViewer::newPolyGreen);
     newPolyGreenAct->setShortcut(tr("Ctrl+1"));
-//    newPolyGreenAct->setEnabled(false);
 
     QAction *newPolyRedAct = editMenu->addAction(tr("&New Polygon (Red)"), this, &ImageViewer::newPolyRed);
     newPolyRedAct->setShortcut(tr("Ctrl+2"));
-//    newPolyRedAct->setEnabled(false);
 
     QAction *newPolyBlueAct = editMenu->addAction(tr("&New Polygon (Blue)"), this, &ImageViewer::newPolyBlue);
     newPolyBlueAct->setShortcut(tr("Ctrl+3"));
-//    newPolyBlueAct->setEnabled(false);
 
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
 
     zoomInAct = viewMenu->addAction(tr("Zoom &In (25%)"), this, &ImageViewer::zoomIn);
     zoomInAct->setShortcut(QKeySequence::ZoomIn);
-    zoomInAct->setEnabled(false);
 
     zoomOutAct = viewMenu->addAction(tr("Zoom &Out (25%)"), this, &ImageViewer::zoomOut);
     zoomOutAct->setShortcut(QKeySequence::ZoomOut);
-    zoomOutAct->setEnabled(false);
 
     normalSizeAct = viewMenu->addAction(tr("&Normal Size"), this, &ImageViewer::normalSize);
     normalSizeAct->setShortcut(tr("Ctrl+V"));
-    normalSizeAct->setEnabled(false);
-
-    viewMenu->addSeparator();
-
-    fitToWindowAct = viewMenu->addAction(tr("&Fit to Window"), this, &ImageViewer::fitToWindow);
-    fitToWindowAct->setEnabled(false);
-    fitToWindowAct->setCheckable(true);
-    fitToWindowAct->setShortcut(tr("Ctrl+F"));
 
     viewMenu->addSeparator();
 
@@ -338,20 +309,6 @@ void ImageViewer::createActions()
 
     helpMenu->addAction(tr("&About"), this, &ImageViewer::about);
     helpMenu->addAction(tr("About &Qt"), &QApplication::aboutQt);
-}
-
-void ImageViewer::updateActions()
-{
-    zoomInAct->setEnabled(!fitToWindowAct->isChecked());
-    zoomOutAct->setEnabled(!fitToWindowAct->isChecked());
-    normalSizeAct->setEnabled(!fitToWindowAct->isChecked());
-//    importFileAct->setEnabled(true);
-//    exportFileAct->setEnabled(true);
-//    newPolyGreenAct->setEnabled(true);
-//    newPolyRedAct->setEnabled(true);
-//    newPolyBlueAct->setEnabled(true);
-//    resetAct->setEnabled(true);
-//    insertAct->setEnabled(true);
 }
 
 void ImageViewer::scaleImage(double factor)
@@ -441,7 +398,7 @@ void ImageViewer::mouseMoveEvent(QMouseEvent *event)
         {
             closestPoint = getClosestPoint(mousePointReal, polyList);
             if((mousePointReal - closestPoint).manhattanLength() < 50)
-                polyList[polyCount.length()-1].replace(iPoint, mousePointReal);
+                polyList[iList].replace(iPoint, mousePointReal);
         }
         else if(event->buttons() & Qt::RightButton)
         {
@@ -544,7 +501,7 @@ void ImageViewer::drawPolygon()
 
     if(removePoint)
     {
-        pen = QPen(Qt::red, 3);
+        pen = QPen(Qt::red, pointWidth);
         painter->setPen(pen);
         painter->drawPoint(closestPoint);
     }
@@ -599,7 +556,7 @@ QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> list)
 void ImageViewer::remove(){
     if(leftClick)
     {
-        polyList[polyCount.length()-1].removeAt(iPoint);
+        polyList[iList].removeAt(iPoint);
         leftClick = false;
     }
     else if(rightClick)
@@ -627,26 +584,28 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
     int j;
     float minDist = std::numeric_limits<float>::max();
     float dist;
+    int c = 0;
 
-    for(int i = 0; i < polyList[polyCount.length()-1].length(); i++)
-    {
-        if(i < polyList[polyCount.length()-1].length() - 1)
-            j = i + 1;
-        else
-            j = 0;
-
-        dist = distToSegment(newPoint, polyList[polyCount.length()-1].at(i), polyList[polyCount.length()-1].at(j));
-        if(dist < minDist)
+    foreach(QPolygon poly, polyList){
+        for(int i = 0; i < poly.length(); i++)
         {
-            minDist = dist;
-            index = i;
+            if(i < poly.length() - 1)
+                j = i + 1;
+            else
+                j = 0;
+
+            dist = distToSegment(newPoint, poly.at(i), poly.at(j));
+            if(dist < minDist)
+            {
+                minDist = dist;
+                index = i;
+                iList = c;
+            }
         }
+        c++;
     }
 
-    if(index == 0)
-        polyList[polyCount.length()-1] << newPoint;
-    else
-        polyList[polyCount.length()-1].insert(index+1, newPoint);
+    polyList[iList].insert(index+1, newPoint);
 
     insertPoint = false;
 }

@@ -112,8 +112,8 @@ bool ImageViewer::loadFile(const QString &fileName)
 
 void ImageViewer::openTxt()
 {
-    QFileDialog dialog(this, tr("Open File"), QDir::currentPath(), tr("text files (*.txt)"));
-    initializeTextFileDialog(dialog, QFileDialog::AcceptOpen, "text/plain", "txt");
+    QFileDialog dialog(this, tr("Import File"), QDir::currentPath(), tr("ASCII-File (*.dat)"));
+    initializeTextFileDialog(dialog, QFileDialog::AcceptOpen, "text/plain", "dat");
 
     while (dialog.exec() == QDialog::Accepted && !importFile(dialog.selectedFiles().first())) {}
 }

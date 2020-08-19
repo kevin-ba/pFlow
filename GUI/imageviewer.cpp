@@ -605,7 +605,11 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
         c++;
     }
 
-    polyList[iList].insert(index+1, newPoint);
+    if(polyList[iList].empty()){
+        polyList[iList] << newPoint;
+    }else{
+        polyList[iList].insert(index+1, newPoint);
+    }
 
     insertPoint = false;
 }

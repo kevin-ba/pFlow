@@ -160,8 +160,6 @@ bool ImageViewer::importFile(const QString &fileName)
        }
     }
 
-    qDebug() << polyList;
-
     ImageViewer::drawPolygon();
     return true;
 }
@@ -170,7 +168,7 @@ void ImageViewer::exportFile()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
             tr("Export File"), "",
-            tr("ASCII-File (*.txt)"));
+            tr("ASCII-File (*.dat)"));
     if (fileName.isEmpty())
             return;
     else
@@ -514,7 +512,6 @@ void ImageViewer::drawPolygon()
 
 void ImageViewer::reset()
 {
-    qDebug() << polyList;
     polyList.clear();
     polyCount.clear();
     polygonDoorsList.clear();

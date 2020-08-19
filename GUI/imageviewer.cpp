@@ -228,15 +228,17 @@ void ImageViewer::normalSize()
 void ImageViewer::about()
 {
     QMessageBox::about(this, tr("About *Appname*"),
-            tr("<p><b>Normal-Point:</b> Leftclick "
-               "<p><b>Door-Point:</b> Rightclick "
+            tr("<p><b>Normal-Point:</b> Left click "
+               "<p><b>Door-Point:</b> Right click "
                "<p><b>Change normal point:</b> Click and hold left mouse button on point"
                " -> Move point to new location -> Release left mouse button</p>"
                "<p><b>Change door point:</b> Click and hold right mouse button on point"
                " -> Move point to new location -> Release right mouse button</p>"
-               "<p><b>Insert:</b> Edit -> Insert -> Click between segement</p>"
-               "</p><b>Remove:</b> Double click on point -> Edit -> Remove </p>"
-               "<p>Hier können weitere Infos stehen</p>"));
+               "<p><b>Insert:</b> Edit -> Insert -> Click near segement where you want to insert</p>"
+               "</p><b>Remove:</b> Double click on point (point turns red) -> Edit -> Remove </p>"
+               "</p><b>Cancel Remove:</b> Double click on point (point turns black)</p>"
+               "</p><b>New polygon:</b> Edit -> New Polygon (Color)</p>"
+               "</p><b>Reset all points:</b> File -> Reset</p>"));
 }
 
 void ImageViewer::createActions()
@@ -369,7 +371,7 @@ void ImageViewer::mouseDoubleClickEvent(QMouseEvent *event)
             closestPoint = getClosestPoint(mousePointReal, polygonDoorsList);
         }
 
-        if((mousePointReal - closestPoint).manhattanLength() < 20)
+        if((mousePointReal - closestPoint).manhattanLength() < 7)
         {
             removePoint = true;
             removeAct->setEnabled(true);
@@ -428,7 +430,7 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
         if(!insertPoint)
         {
             closestPoint = getClosestPoint(mousePointReal, polyList);
-            if((mousePointReal - closestPoint).manhattanLength() > 10)
+            if((mousePointReal - closestPoint).manhattanLength() > 7)
             {
                 polyList[polyCount.length()-1] << mousePointReal;
             }
@@ -441,7 +443,7 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
     if(event->button() == Qt::RightButton)
     {
         closestPoint = getClosestPoint(mousePointReal, polygonDoorsList);
-        if((mousePointReal - closestPoint).manhattanLength() > 10)
+        if((mousePointReal - closestPoint).manhattanLength() > 7)
         {
             if(polygonDoorsList.length() >= 1)
             {
@@ -487,7 +489,7 @@ void ImageViewer::drawPolygon()
         painter->drawPoints(poly);
         c++;
     }
-    //alle Türen einzeichnen
+
     foreach(QPolygon door, polygonDoorsList)
     {
         pen = QPen(Qt::magenta, lineWidth);

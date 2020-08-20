@@ -2,7 +2,7 @@
 
 OutlineFlow is a program with which you can load a room plan as an image and then draw the room off to get the coordinates.
 
-# Developer tools
+## Developer tools
 
 Programmed with C++ and Qt
 
@@ -14,7 +14,7 @@ Qt 5.15.0
 
 (When installing on Windows you also have to tick MinGW during the installation)
 
-# Functionality
+## Functionality
 * The room drawing is done by creating a polygon and adding the points to the polygon with the help of the classes *QPolygon* and *QPoint*.
 
 * The points are obtained by mouse events with the help of the class *QMouseEvent*.

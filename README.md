@@ -1,6 +1,6 @@
-# APPNAME
+# OutlineFlow
 
-APPNAME is a program with which you can load a room plan as an image and then draw the room off to get the coordinates.
+OutlineFlow is a program with which you can load a room plan as an image and then draw the room off to get the coordinates.
 
 # Developer tools
 

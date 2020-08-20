@@ -1,17 +1,17 @@
-#ifndef IMAGEVIEWER_H
-#define IMAGEVIEWER_H
+#ifndef OUTLINEFLOW_H
+#define OUTLINEFLOW_H
 
 #include <QMainWindow>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QLabel>
 
-class ImageViewer : public QMainWindow
+class OutlineFlow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    ImageViewer(QWidget *parent = nullptr);
+    OutlineFlow(QWidget *parent = nullptr);
     bool loadFile(const QString &);
     void exportFile();
     bool importFile(const QString &);
@@ -98,4 +98,4 @@ private:
 
 };
 
-#endif // IMAGEVIEWER_H
+#endif // OUTLINEFLOW_H

@@ -1,4 +1,4 @@
-#include "imageviewer.h"
+#include "outlineFlow.h"
 #include <QGuiApplication>
 #include <QFileDialog>
 #include <QStandardPaths>
@@ -14,7 +14,7 @@
 #include <QtMath>
 #include <limits>
 
-ImageViewer::ImageViewer(QWidget *parent)
+OutlineFlow::OutlineFlow(QWidget *parent)
    : QMainWindow(parent), imageLabel(new QLabel)
    , scrollArea(new QScrollArea)
 {
@@ -75,7 +75,7 @@ static void initializeTextFileDialog(QFileDialog &dialog, QFileDialog::AcceptMod
         dialog.setDefaultSuffix(defaultSuffix);
 }
 
-void ImageViewer::open()
+void OutlineFlow::open()
 {
     QFileDialog dialog(this, tr("Open File"));
     initializeImageFileDialog(dialog, QFileDialog::AcceptOpen, "image/jpeg", "jpg");
@@ -83,7 +83,7 @@ void ImageViewer::open()
     while (dialog.exec() == QDialog::Accepted && !loadFile(dialog.selectedFiles().first())) {}
 }
 
-bool ImageViewer::loadFile(const QString &fileName)
+bool OutlineFlow::loadFile(const QString &fileName)
 {
     QImageReader reader(fileName);
     reader.setAutoTransform(true);
@@ -105,12 +105,12 @@ bool ImageViewer::loadFile(const QString &fileName)
 
     imageLabel->adjustSize();
 
-    ImageViewer::reset();
+    reset();
 
     return true;
 }
 
-void ImageViewer::openTxt()
+void OutlineFlow::openTxt()
 {
     QFileDialog dialog(this, tr("Import File"), QDir::currentPath(), tr("ASCII-File (*.dat)"));
     initializeTextFileDialog(dialog, QFileDialog::AcceptOpen, "text/plain", "dat");
@@ -118,14 +118,14 @@ void ImageViewer::openTxt()
     while (dialog.exec() == QDialog::Accepted && !importFile(dialog.selectedFiles().first())) {}
 }
 
-bool ImageViewer::importFile(const QString &fileName)
+bool OutlineFlow::importFile(const QString &fileName)
 {
 
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return false;
 
-    ImageViewer::reset();
+    reset();
     polyList.clear();
     polyCount.clear();
     polygonDoorsList.clear();
@@ -160,11 +160,11 @@ bool ImageViewer::importFile(const QString &fileName)
        }
     }
 
-    ImageViewer::drawPolygon();
+    drawPolygon();
     return true;
 }
 
-void ImageViewer::exportFile()
+void OutlineFlow::exportFile()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
             tr("Export File"), "",
@@ -207,25 +207,25 @@ void ImageViewer::exportFile()
      }
 }
 
-void ImageViewer::zoomIn()
+void OutlineFlow::zoomIn()
 {
     scaleImage(1.25);
 }
 
-void ImageViewer::zoomOut()
+void OutlineFlow::zoomOut()
 {
     scaleImage(0.8);
 }
 
-void ImageViewer::normalSize()
+void OutlineFlow::normalSize()
 {
     imageLabel->adjustSize();
     scaleFactor = 1.0;
 }
 
-void ImageViewer::about()
+void OutlineFlow::about()
 {
-    QMessageBox::about(this, tr("About *Appname*"),
+    QMessageBox::about(this, tr("About OutlineFlow"),
             tr("<p><b>Normal-Point:</b> Left click "
                "<p><b>Door-Point:</b> Right click "
                "<p><b>Change normal point:</b> Click and hold left mouse button on point"
@@ -233,26 +233,28 @@ void ImageViewer::about()
                "<p><b>Change door point:</b> Click and hold right mouse button on point"
                " -> Move point to new location -> Release right mouse button</p>"
                "<p><b>Insert:</b> Edit -> Insert -> Click near segement where you want to insert</p>"
-               "</p><b>Remove:</b> Double click on point (point turns red) -> Edit -> Remove </p>"
-               "</p><b>Cancel Remove:</b> Double click on point (point turns black)</p>"
-               "</p><b>New polygon:</b> Edit -> New Polygon (Color)</p>"
-               "</p><b>Reset all points:</b> File -> Reset</p>"));
+               "<p><b>Remove:</b> Double click on point (point turns red) -> Edit -> Remove </p>"
+               "<p><b>Cancel Remove:</b> Double click on point (point turns black)</p>"
+               "<p><b>New polygon:</b> Edit -> New Polygon (Color)</p>"
+               "<p><b>Reset all points:</b> File -> Reset</p>"
+               "<p><b>Export:</b> File -> Export... (exports/saves all polygons in .dat file)</p>"
+               "<p><b>Import:</b> File -> Import... (imports polygons from exported file)</p>"));
 }
 
-void ImageViewer::createActions()
+void OutlineFlow::createActions()
 {
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
 
-    QAction *openAct = fileMenu->addAction(tr("&Open..."), this, &ImageViewer::open);
+    QAction *openAct = fileMenu->addAction(tr("&Open..."), this, &OutlineFlow::open);
     openAct->setShortcut(QKeySequence::Open);
 
-    QAction *importAct = fileMenu->addAction(tr("&Import..."), this, &ImageViewer::openTxt);
+    QAction *importAct = fileMenu->addAction(tr("&Import..."), this, &OutlineFlow::openTxt);
     importAct->setShortcut(tr("Ctrl+N"));
 
-    QAction *exportAct = fileMenu->addAction(tr("&Export..."), this, &ImageViewer::exportFile);
+    QAction *exportAct = fileMenu->addAction(tr("&Export..."), this, &OutlineFlow::exportFile);
     exportAct->setShortcut(tr("Ctrl+S"));
 
-    QAction *resetAct = fileMenu->addAction(tr("&Reset"), this, &ImageViewer::reset);
+    QAction *resetAct = fileMenu->addAction(tr("&Reset"), this, &OutlineFlow::reset);
     resetAct->setShortcut(tr("Ctrl+R"));
 
     fileMenu->addSeparator();
@@ -261,57 +263,57 @@ void ImageViewer::createActions()
     exitAct->setShortcut(tr("Ctrl+Q"));
 
     QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
-    removeAct = editMenu->addAction(tr("&Remove"), this, &ImageViewer::remove);
+    removeAct = editMenu->addAction(tr("&Remove"), this, &OutlineFlow::remove);
     removeAct->setShortcut(QKeySequence::Delete);
     removeAct->setEnabled(false);
 
-    QAction *insertAct = editMenu->addAction(tr("&Insert Point"), this, &ImageViewer::insert);
+    QAction *insertAct = editMenu->addAction(tr("&Insert Point"), this, &OutlineFlow::insert);
     insertAct->setShortcut(tr("Ctrl+I"));
 
     editMenu->addSeparator();
 
-    QAction *newPolyGreenAct = editMenu->addAction(tr("&New Polygon (Green)"), this, &ImageViewer::newPolyGreen);
+    QAction *newPolyGreenAct = editMenu->addAction(tr("&New Polygon (Green)"), this, &OutlineFlow::newPolyGreen);
     newPolyGreenAct->setShortcut(tr("Ctrl+1"));
 
-    QAction *newPolyRedAct = editMenu->addAction(tr("&New Polygon (Red)"), this, &ImageViewer::newPolyRed);
+    QAction *newPolyRedAct = editMenu->addAction(tr("&New Polygon (Red)"), this, &OutlineFlow::newPolyRed);
     newPolyRedAct->setShortcut(tr("Ctrl+2"));
 
-    QAction *newPolyBlueAct = editMenu->addAction(tr("&New Polygon (Blue)"), this, &ImageViewer::newPolyBlue);
+    QAction *newPolyBlueAct = editMenu->addAction(tr("&New Polygon (Blue)"), this, &OutlineFlow::newPolyBlue);
     newPolyBlueAct->setShortcut(tr("Ctrl+3"));
 
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
 
-    zoomInAct = viewMenu->addAction(tr("Zoom &In (25%)"), this, &ImageViewer::zoomIn);
+    zoomInAct = viewMenu->addAction(tr("Zoom &In (25%)"), this, &OutlineFlow::zoomIn);
     zoomInAct->setShortcut(QKeySequence::ZoomIn);
 
-    zoomOutAct = viewMenu->addAction(tr("Zoom &Out (25%)"), this, &ImageViewer::zoomOut);
+    zoomOutAct = viewMenu->addAction(tr("Zoom &Out (25%)"), this, &OutlineFlow::zoomOut);
     zoomOutAct->setShortcut(QKeySequence::ZoomOut);
 
-    normalSizeAct = viewMenu->addAction(tr("&Normal Size"), this, &ImageViewer::normalSize);
+    normalSizeAct = viewMenu->addAction(tr("&Normal Size"), this, &OutlineFlow::normalSize);
     normalSizeAct->setShortcut(tr("Ctrl+V"));
 
     viewMenu->addSeparator();
 
-    incLineAct = viewMenu->addAction(tr("&Increase Line Width"), this, &ImageViewer::increaseLine);
+    incLineAct = viewMenu->addAction(tr("&Increase Line Width"), this, &OutlineFlow::increaseLine);
     incLineAct->setShortcut(tr("Ctrl+6"));
 
-    decLineAct = viewMenu->addAction(tr("&Decrease Line Width"), this, &ImageViewer::decreaseLine);
+    decLineAct = viewMenu->addAction(tr("&Decrease Line Width"), this, &OutlineFlow::decreaseLine);
     decLineAct->setShortcut(tr("Ctrl+7"));
 
-    incPointAct = viewMenu->addAction(tr("&Increase Point Width"), this, &ImageViewer::increasePoint);
+    incPointAct = viewMenu->addAction(tr("&Increase Point Width"), this, &OutlineFlow::increasePoint);
     incPointAct->setShortcut(tr("Ctrl+8"));
 
-    decPointAct = viewMenu->addAction(tr("&Decrease Point Width"), this, &ImageViewer::decreasePoint);
+    decPointAct = viewMenu->addAction(tr("&Decrease Point Width"), this, &OutlineFlow::decreasePoint);
     decPointAct->setShortcut(tr("Ctrl+9"));
 
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
 
-    helpMenu->addAction(tr("&About"), this, &ImageViewer::about);
+    helpMenu->addAction(tr("&About"), this, &OutlineFlow::about);
     helpMenu->addAction(tr("About &Qt"), &QApplication::aboutQt);
 }
 
-void ImageViewer::scaleImage(double factor)
+void OutlineFlow::scaleImage(double factor)
 {
     scaleFactor *= factor;
     imageLabel->resize(scaleFactor * imageLabel->pixmap(Qt::ReturnByValue).size());
@@ -325,28 +327,28 @@ void ImageViewer::scaleImage(double factor)
     zoomOutAct->setEnabled(scaleFactor > 0.333);
 }
 
-void ImageViewer::adjustScrollBar(QScrollBar *scrollBar, double factor)
+void OutlineFlow::adjustScrollBar(QScrollBar *scrollBar, double factor)
 {
     scrollBar->setValue(int(factor * scrollBar->value()
                             + ((factor - 1) * scrollBar->pageStep()/2)));
 }
 
-void ImageViewer::newPolyGreen()
+void OutlineFlow::newPolyGreen()
 {
-    ImageViewer::newPoly("#00ff00");
+    OutlineFlow::newPoly("#00ff00");
 }
 
-void ImageViewer::newPolyRed()
+void OutlineFlow::newPolyRed()
 {
-    ImageViewer::newPoly("#ff0000");
+    OutlineFlow::newPoly("#ff0000");
 }
 
-void ImageViewer::newPolyBlue()
+void OutlineFlow::newPolyBlue()
 {
-    ImageViewer::newPoly("#0000ff");
+    OutlineFlow::newPoly("#0000ff");
 }
 
-void ImageViewer::mouseDoubleClickEvent(QMouseEvent *event)
+void OutlineFlow::mouseDoubleClickEvent(QMouseEvent *event)
 {
     QPoint mousePoint = imageLabel->mapFromParent(event->pos());
 
@@ -384,7 +386,7 @@ void ImageViewer::mouseDoubleClickEvent(QMouseEvent *event)
     drawPolygon();
 }
 
-void ImageViewer::mouseMoveEvent(QMouseEvent *event)
+void OutlineFlow::mouseMoveEvent(QMouseEvent *event)
 {
     if(!insertPoint)
     {
@@ -415,7 +417,7 @@ void ImageViewer::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
-void ImageViewer::mousePressEvent(QMouseEvent *event)
+void OutlineFlow::mousePressEvent(QMouseEvent *event)
 {
     QPoint mousePoint = imageLabel->mapFromParent(event->pos());
 
@@ -468,7 +470,7 @@ void ImageViewer::mousePressEvent(QMouseEvent *event)
     drawPolygon();
 }
 
-void ImageViewer::drawPolygon()
+void OutlineFlow::drawPolygon()
 {
     QImage tmp(image);
     QPainter *painter = new QPainter(&tmp);
@@ -510,7 +512,7 @@ void ImageViewer::drawPolygon()
     imageLabel->setPixmap(QPixmap::fromImage(tmp));
 }
 
-void ImageViewer::reset()
+void OutlineFlow::reset()
 {
     polyList.clear();
     polyCount.clear();
@@ -523,7 +525,7 @@ void ImageViewer::reset()
     polyCount.append("#0000ff");
 }
 
-QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> list)
+QPoint OutlineFlow::getClosestPoint(QPoint newPosition, QList<QPolygon> list)
 {
     QPoint closestPoint;
     float manhattenLength = std::numeric_limits<float>::max();
@@ -552,7 +554,7 @@ QPoint ImageViewer::getClosestPoint(QPoint newPosition, QList<QPolygon> list)
     return closestPoint;
 }
 
-void ImageViewer::remove(){
+void OutlineFlow::remove(){
     if(leftClick)
     {
         polyList[iList].removeAt(iPoint);
@@ -569,7 +571,7 @@ void ImageViewer::remove(){
     drawPolygon();
 }
 
-void ImageViewer::insert()
+void OutlineFlow::insert()
 {
     if(insertPoint == false)
         insertPoint = true;
@@ -577,7 +579,7 @@ void ImageViewer::insert()
         insertPoint = false;
 }
 
-void ImageViewer::insertNewPoint(QPoint newPoint)
+void OutlineFlow::insertNewPoint(QPoint newPoint)
 {
     int index = 0;
     int j;
@@ -613,7 +615,7 @@ void ImageViewer::insertNewPoint(QPoint newPoint)
     insertPoint = false;
 }
 
-float ImageViewer::distToSegment(QPoint newPoint, QPoint p1, QPoint p2)
+float OutlineFlow::distToSegment(QPoint newPoint, QPoint p1, QPoint p2)
 {
     int x1 = p1.x();
     int y1 = p1.y();
@@ -646,31 +648,31 @@ float ImageViewer::distToSegment(QPoint newPoint, QPoint p1, QPoint p2)
 
 }
 
-void ImageViewer::newPoly(QString color)
+void OutlineFlow::newPoly(QString color)
 {
     polyCount.append(color);
     polyList.append(QPolygon());
 }
 
-void ImageViewer::increaseLine(){
+void OutlineFlow::increaseLine(){
     if(lineWidth < 7)
         lineWidth++;
     drawPolygon();
 }
 
-void ImageViewer::increasePoint(){
+void OutlineFlow::increasePoint(){
     if(pointWidth < 10)
         pointWidth++;
     drawPolygon();
 }
 
-void ImageViewer::decreaseLine(){
+void OutlineFlow::decreaseLine(){
     if(lineWidth > 1)
         lineWidth--;
     drawPolygon();
 }
 
-void ImageViewer::decreasePoint(){
+void OutlineFlow::decreasePoint(){
     if(pointWidth > 1)
         pointWidth--;
     drawPolygon();

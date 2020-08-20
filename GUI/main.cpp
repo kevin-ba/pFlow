@@ -1,11 +1,11 @@
-#include "imageviewer.h"
+#include "outlineFlow.h"
 
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    ImageViewer l;
+    OutlineFlow l;
     l.show();
 
     return a.exec();
